@@ -1,131 +1,30 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { CheckCircle2, Crown, Edit2, Shield, Star, Trash2, Users, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Star, Crown, Zap, Edit2, Trash2, Users, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { MembershipPlan } from "./plan-form-dialog";
 
-type MembershipPlan = {
-  _id: string;
-  name: string;
-  nameEn?: string;
-  price: number;
-  durationDays: number;
-  tier?: string;
-  isActive: boolean;
-  features?: string[];
-  subscribers?: number;
-};
+const icons: Record<string, React.ElementType> = { basic: Shield, silver: Star, gold: Crown, platinum: Zap };
+const colors: Record<string, string> = { basic: "text-slate-300", silver: "text-blue-300", gold: "text-amber-300", platinum: "text-violet-300" };
 
-interface PlansListProps {
-  plans: MembershipPlan[];
-  isLoading: boolean;
-  onEdit: (plan: MembershipPlan) => void;
-  onDeleteClick: (id: string) => void;
-}
-
-const planIcons: Record<string, React.ElementType> = { basic: Shield, silver: Star, gold: Crown, platinum: Zap };
-const planColors: Record<string, { color: string; bg: string }> = {
-  basic:    { color: "text-slate-400",  bg: "bg-slate-500/10 border-slate-500/20" },
-  silver:   { color: "text-blue-400",   bg: "bg-blue-500/10 border-blue-500/20" },
-  gold:     { color: "text-amber-400",  bg: "bg-amber-500/10 border-amber-500/20" },
-  platinum: { color: "text-primary",    bg: "bg-primary/10 border-primary/20" },
-};
-
-export default function PlansList({
-  plans,
-  isLoading,
-  onEdit,
-  onDeleteClick,
-}: PlansListProps) {
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i} className="p-6 bg-card border-border/40 space-y-4">
-            <Skeleton className="w-12 h-12 rounded-xl" />
-            <Skeleton className="h-8 w-24" />
-            <div className="space-y-2">
-              {Array.from({ length: 3 }).map((_, j) => <Skeleton key={j} className="h-4 w-full" />)}
-            </div>
-          </Card>
-        ))}
-      </div>
-    );
-  }
-
+export default function PlansList({ plans, isLoading, onEdit, onDeleteClick }: { plans: MembershipPlan[]; isLoading: boolean; onEdit: (plan: MembershipPlan) => void; onDeleteClick: (id: string) => void }) {
+  if (isLoading) return <div className="grid gap-4 md:grid-cols-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-80 rounded-lg" />)}</div>;
   return (
-    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4 stagger">
-      {plans.map((plan, i) => {
-        const tier = plan.tier ?? "basic";
-        const meta = planColors[tier] ?? planColors.basic;
-        const Icon = planIcons[tier] ?? Shield;
-        const isPremium = tier === "gold" || tier === "platinum";
-
-        return (
-          <Card key={plan._id}
-            className="relative flex flex-col p-6 bg-card border-border/40 hover:border-primary/20 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-primary/5"
-            style={{ animationDelay: `${i * 60}ms` }}
-          >
-            {isPremium && (
-              <div className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${tier === "platinum" ? "from-primary via-purple-400 to-pink-500" : "from-amber-400 via-yellow-400 to-amber-500"} rounded-t-xl`} />
-            )}
-
-            <div className="flex items-center justify-between mb-5">
-              <div className={`p-3 rounded-xl border ${meta.bg} ${meta.color}`}>
-                <Icon className="w-6 h-6" />
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className={`text-[10px] ${plan.isActive ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-secondary/50 text-muted-foreground border-border/40"}`}>
-                  {plan.isActive ? "نشطة" : "معطّلة"}
-                </Badge>
-              </div>
-            </div>
-
-            <div className="mb-5">
-              <h3 className={`text-xl font-bold mb-2 ${meta.color}`}>{plan.name}</h3>
-              <div className="flex items-baseline gap-1">
-                {plan.price === 0 ? (
-                  <span className="text-3xl font-extrabold text-white tracking-tight">مجاني</span>
-                ) : (
-                  <>
-                    <span className="text-3xl font-extrabold text-white tracking-tight tabular-nums">{plan.price.toLocaleString("ar-SA")}</span>
-                    <span className="text-sm text-muted-foreground">ل.س</span>
-                    <span className="text-xs text-muted-foreground/60">/ {plan.durationDays} يوم</span>
-                  </>
-                )}
-              </div>
-              {plan.subscribers !== undefined && (
-                <p className="text-[11px] text-muted-foreground/60 mt-1 flex items-center gap-1">
-                  <Users className="w-3 h-3" /> {plan.subscribers} مشترك
-                </p>
-              )}
-            </div>
-
-            <div className="flex-1 space-y-2.5 mb-6">
-              {(plan.features ?? []).map((f: string, idx: number) => (
-                <div key={idx} className="flex items-start gap-2.5">
-                  <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${meta.color} opacity-80`} />
-                  <span className="text-[12px] text-foreground/80 leading-tight">{f}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => onEdit(plan)}
-                className="flex-1 h-9 gap-2 border-border/40 hover:border-primary/30 hover:bg-secondary/50 transition-all font-semibold">
-                <Edit2 className="w-4 h-4 text-muted-foreground" /> تعديل الخطة
-              </Button>
-              {plan.tier !== "basic" && (
-                <Button variant="outline" size="sm" onClick={() => onDeleteClick(plan._id)}
-                  className="h-9 w-9 p-0 border-rose-500/20 text-rose-400 hover:bg-rose-500/10 shrink-0">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              )}
-            </div>
-          </Card>
-        );
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {plans.map((plan) => {
+        const tier = plan.tier || "basic"; const Icon = icons[tier] || Shield; const color = colors[tier] || colors.basic;
+        return <Card key={plan._id} className="p-5 bg-card border-border/40 flex flex-col">
+          <div className="flex items-center justify-between"><div className={`w-10 h-10 rounded-lg bg-secondary/50 flex items-center justify-center ${color}`}><Icon className="w-5 h-5" /></div><Badge variant="outline" className={plan.isActive ? "badge-success" : "badge-neutral"}>{plan.isActive ? "نشطة" : "معطلة"}</Badge></div>
+          <h3 className={`text-lg font-bold mt-4 ${color}`}>{plan.nameAr || plan.name}</h3>
+          <p className="text-xs text-muted-foreground">{plan.name}</p>
+          <p className="mt-3"><span className="text-2xl font-black text-white">{plan.price ? plan.price.toLocaleString("ar-SY") : "مجاني"}</span>{plan.price > 0 && <span className="text-xs text-muted-foreground"> ل.س / {plan.durationDays} يوم</span>}</p>
+          <div className="flex gap-3 text-[11px] text-muted-foreground my-3"><span className="flex gap-1"><Users className="w-3 h-3" />{plan.activeSubscribers || 0} نشط</span><span>{plan.subscribers || 0} إجمالي</span><span>{Number(plan.revenue || 0).toLocaleString("ar-SY")} ل.س</span></div>
+          <div className="flex-1 space-y-2 border-t border-border/20 pt-3">{(plan.featuresAr?.length ? plan.featuresAr : plan.features || []).map((feature, index) => <p key={index} className="text-xs flex gap-2 text-foreground/80"><CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${color}`} />{feature}</p>)}</div>
+          <div className="flex gap-2 mt-4"><Button variant="outline" size="sm" className="flex-1 gap-2" onClick={() => onEdit(plan)}><Edit2 className="w-3.5 h-3.5" />تعديل</Button>{plan.isActive && <Button variant="outline" size="icon-sm" className="text-rose-400" onClick={() => onDeleteClick(plan._id)}><Trash2 className="w-3.5 h-3.5" /></Button>}</div>
+        </Card>;
       })}
     </div>
   );

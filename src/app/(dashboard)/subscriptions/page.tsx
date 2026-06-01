@@ -1,202 +1,69 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Download, Package, Plus, RotateCcw, Search, Users } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Users, Plus } from "lucide-react";
-import {
-  getAllMembershipPlans,
-  createMembershipPlan,
-  updateMembershipPlan,
-  deleteMembershipPlan,
-  getMembershipSubscribers,
-} from "@/infrastructure/services/subscriptions.service";
+import { createMembershipPlan, deleteMembershipPlan, getAllMembershipPlans, getMembershipStats, getMembershipSubscribers, updateMembershipPlan } from "@/infrastructure/services/subscriptions.service";
+import PlanDeleteDialog from "./components/plan-delete-dialog";
+import PlanFormDialog, { type MembershipPlan } from "./components/plan-form-dialog";
 import PlansList from "./components/plans-list";
 import SubscribersTable from "./components/subscribers-table";
-import PlanFormDialog from "./components/plan-form-dialog";
-import PlanDeleteDialog from "./components/plan-delete-dialog";
+import SubscriptionAnalytics from "./components/subscription-analytics";
 
-type MembershipPlan = {
-  _id: string;
-  name: string;
-  nameEn?: string;
-  price: number;
-  durationDays: number;
-  tier?: string;
-  isActive: boolean;
-  features?: string[];
-  subscribers?: number;
-};
-
-
-const tierOrder: Record<string, number> = { basic: 0, silver: 1, gold: 2, platinum: 3 };
+const emptyFilters = { search: "", status: "all", plan: "all", dateFrom: "", dateTo: "", sortBy: "createdAt", sortOrder: "desc" as "asc" | "desc" };
+const body = (value: any) => value?.data?.data ?? value?.data ?? value ?? {};
+const lines = (value: string) => value.split("\n").map((item) => item.trim()).filter(Boolean);
 
 export default function SubscriptionsPage() {
-  const queryClient = useQueryClient();
-  const [tab, setTab] = useState("plans");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const client = useQueryClient();
+  const [tab, setTab] = useState("overview");
+  const [page, setPage] = useState(1);
+  const [filters, setFilters] = useState(emptyFilters);
   const [editData, setEditData] = useState<MembershipPlan | null>(null);
-  const [subPage, setSubPage] = useState(1);
-
-  const { data: plansData, isLoading: plansLoading } = useQuery({
-    queryKey: ["admin-memberships"],
-    queryFn: getAllMembershipPlans,
-    retry: false,
-  });
-
-  const { data: subsData, isLoading: subsLoading } = useQuery({
-    queryKey: ["admin-subscribers", subPage],
-    queryFn: () => getMembershipSubscribers(subPage, 10),
-    retry: false,
-    enabled: tab === "subscribers",
-  });
-
-  const plans: MembershipPlan[] = [
-    ...(plansData?.plans ?? plansData?.data ?? []),
-  ].sort((a, b) => (tierOrder[a.tier ?? "basic"] ?? 0) - (tierOrder[b.tier ?? "basic"] ?? 0));
-
-  const subscribers = subsData?.subscribers ?? subsData?.data ?? [];
-  const totalSubs = subsData?.total ?? 0;
-
-  const createMut = useMutation({
-    mutationFn: createMembershipPlan,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-memberships"] });
-      toast.success("✅ تم إنشاء الخطة");
-      closeModal();
-    },
-    onError: () => toast.error("فشل إنشاء الخطة"),
-  });
-
-  const updateMut = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
-      updateMembershipPlan(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-memberships"] });
-      toast.success("✅ تم تحديث الخطة");
-      closeModal();
-    },
-    onError: () => toast.error("فشل تحديث الخطة"),
-  });
-
-  const deleteMut = useMutation({
-    mutationFn: deleteMembershipPlan,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-memberships"] });
-      toast.success("تم حذف الخطة");
-      setDeleteId(null);
-    },
-    onError: () => {
-      toast.error("فشل حذف الخطة");
-      setDeleteId(null);
-    },
-  });
-
-  const openCreate = () => {
-    setEditData(null);
-    setModalOpen(true);
+  const [formOpen, setFormOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const plansQuery = useQuery({ queryKey: ["subscription-plans"], queryFn: getAllMembershipPlans });
+  const statsQuery = useQuery({ queryKey: ["subscription-stats"], queryFn: getMembershipStats });
+  const subscribersQuery = useQuery({ queryKey: ["subscription-users", page, filters], queryFn: () => getMembershipSubscribers(page, 12, filters) });
+  const plans: MembershipPlan[] = body(plansQuery.data).plans || [];
+  const result = body(subscribersQuery.data);
+  const subscribers = result.subscribers || [];
+  const pagination = result.pagination || { total: 0, pages: 1 };
+  const refresh = () => { client.invalidateQueries({ queryKey: ["subscription-plans"] }); client.invalidateQueries({ queryKey: ["subscription-stats"] }); client.invalidateQueries({ queryKey: ["subscription-users"] }); };
+  const save = useMutation({ mutationFn: ({ id, data }: any) => id ? updateMembershipPlan(id, data) : createMembershipPlan(data), onSuccess: () => { refresh(); setFormOpen(false); toast.success("تم حفظ خطة الاشتراك"); }, onError: () => toast.error("تعذر حفظ الخطة، تحقق من الحقول") });
+  const disable = useMutation({ mutationFn: deleteMembershipPlan, onSuccess: () => { refresh(); setDeleteId(null); toast.success("تم تعطيل الخطة مع الاحتفاظ بسجلات المشتركين"); }, onError: () => toast.error("تعذر تعطيل الخطة") });
+  const setFilter = (key: keyof typeof filters, value: string) => { setFilters((current) => ({ ...current, [key]: value })); setPage(1); };
+  const exportCsv = () => {
+    const rows = subscribers.map((sub: any) => [sub.user?.fullName, sub.user?.phoneNumber, sub.plan?.nameAr || sub.plan?.name, sub.status, sub.amountPaid, sub.autoRenew ? "نعم" : "لا", sub.startDate, sub.endDate]);
+    const csv = [["المشترك", "الهاتف", "الخطة", "الحالة", "المبلغ", "تجديد تلقائي", "البداية", "النهاية"], ...rows].map((row: unknown[]) => row.map((v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" })); const a = document.createElement("a"); a.href = url; a.download = "subscriptions.csv"; a.click(); URL.revokeObjectURL(url);
   };
-
-  const openEdit = (plan: MembershipPlan) => {
-    setEditData(plan);
-    setModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setModalOpen(false);
-    setEditData(null);
-  };
-
-  const handleSave = (form: any) => {
-    if (!form.name.trim()) {
-      toast.error("يرجى إدخال اسم الخطة");
-      return;
-    }
-    const payload = {
-      ...form,
-      features: form.features.split("\n").map((f: string) => f.trim()).filter(Boolean),
-    };
-    if (editData) {
-      updateMut.mutate({ id: editData._id, data: payload });
-    } else {
-      createMut.mutate(payload);
-    }
-  };
-
-  const handleDeleteConfirm = () => {
-    if (deleteId) {
-      deleteMut.mutate(deleteId);
-    }
-  };
-
-  const isPending = createMut.isPending || updateMut.isPending;
-
-  return (
-    <div className="mx-auto w-full max-w-[1480px] space-y-6">
-      <Tabs value={tab} onValueChange={setTab} className="w-full flex-col gap-6">
-        <div className="flex flex-col gap-4 rounded-2xl border border-border/30 bg-card/45 p-4 shadow-sm shadow-black/10 lg:flex-row lg:items-center lg:justify-between font-arabic" dir="rtl">
-          <div className="min-w-0 text-right">
-            <h2 className="text-base font-bold text-white tracking-tight">إدارة الخطط والاشتراكات</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">إدارة مستويات الاشتراك ومتابعة المشتركين.</p>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:justify-end">
-            <TabsList className="h-10 w-full rounded-xl border border-border/40 bg-secondary/30 p-1 sm:w-fit">
-              <TabsTrigger value="plans" className="min-w-28 rounded-lg px-4 text-xs data-active:bg-card data-[state=active]:bg-card gap-1.5">
-                <Package className="w-3.5 h-3.5" /> الخطط
-              </TabsTrigger>
-              <TabsTrigger value="subscribers" className="min-w-32 rounded-lg px-4 text-xs data-active:bg-card data-[state=active]:bg-card gap-1.5">
-                <Users className="w-3.5 h-3.5" /> المشتركون
-                <Badge className="bg-primary/20 text-primary border-primary/20 text-[9px] px-1 py-0 shadow-none">
-                  {totalSubs}
-                </Badge>
-              </TabsTrigger>
-            </TabsList>
-            {tab === "plans" && (
-              <Button onClick={openCreate} size="sm" className="h-10 gap-2 rounded-xl bg-primary px-4 text-white shadow-lg shadow-primary/25 hover:bg-primary/90">
-                <Plus className="w-3.5 h-3.5" /> خطة جديدة
-              </Button>
-            )}
-          </div>
-        </div>
-
-        <TabsContent value="plans" className="m-0 focus-visible:outline-none">
-          <PlansList
-            plans={plans}
-            isLoading={plansLoading}
-            onEdit={openEdit}
-            onDeleteClick={setDeleteId}
-          />
-        </TabsContent>
-
-        <TabsContent value="subscribers" className="m-0 focus-visible:outline-none" dir="rtl">
-          <SubscribersTable
-            subscribers={subscribers}
-            isLoading={subsLoading}
-            total={totalSubs}
-            page={subPage}
-            setPage={setSubPage}
-          />
-        </TabsContent>
-      </Tabs>
-
-      <PlanFormDialog
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        editData={editData}
-        onSave={handleSave}
-        isPending={isPending}
-      />
-
-      <PlanDeleteDialog
-        open={!!deleteId}
-        onOpenChange={(open) => !open && setDeleteId(null)}
-        onConfirm={handleDeleteConfirm}
-        isPending={deleteMut.isPending}
-      />
-    </div>
-  );
+  return <div className="space-y-5" dir="rtl">
+    <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between"><div><h2 className="text-lg font-bold">إدارة الاشتراكات</h2><p className="text-xs text-muted-foreground">خطط الاشتراك، المشتركين، الإيرادات وحالات التجديد.</p></div><Button className="gap-2" onClick={() => { setEditData(null); setFormOpen(true); }}><Plus className="w-4 h-4" />خطة جديدة</Button></div>
+    <SubscriptionAnalytics stats={body(statsQuery.data)} />
+    <Tabs value={tab} onValueChange={setTab}><TabsList><TabsTrigger value="overview"><Package className="w-3.5 h-3.5 ml-1" />الخطط</TabsTrigger><TabsTrigger value="subscribers"><Users className="w-3.5 h-3.5 ml-1" />المشتركون</TabsTrigger></TabsList>
+      <TabsContent value="overview"><PlansList plans={plans} isLoading={plansQuery.isLoading} onEdit={(plan) => { setEditData(plan); setFormOpen(true); }} onDeleteClick={setDeleteId} /></TabsContent>
+      <TabsContent value="subscribers" className="space-y-3">
+        <Card className="p-3 grid gap-2 md:grid-cols-4 xl:grid-cols-8 bg-card border-border/40">
+          <div className="relative md:col-span-2"><Search className="absolute right-3 top-2.5 w-3.5 h-3.5 text-muted-foreground" /><Input value={filters.search} onChange={(e) => setFilter("search", e.target.value)} placeholder="بحث بالاسم، الهاتف أو الخطة..." className="pr-9" /></div>
+          <Select value={filters.status} onValueChange={(v) => setFilter("status", v || "all")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">كل الحالات</SelectItem><SelectItem value="active">نشط</SelectItem><SelectItem value="expired">منتهي</SelectItem><SelectItem value="cancelled">ملغي</SelectItem><SelectItem value="pending">معلق</SelectItem></SelectContent></Select>
+          <Select value={filters.plan} onValueChange={(v) => setFilter("plan", v || "all")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">كل الخطط</SelectItem>{plans.map((plan) => <SelectItem key={plan._id} value={plan._id}>{plan.nameAr}</SelectItem>)}</SelectContent></Select>
+          <Input type="date" value={filters.dateFrom} onChange={(e) => setFilter("dateFrom", e.target.value)} /><Input type="date" value={filters.dateTo} onChange={(e) => setFilter("dateTo", e.target.value)} />
+          <Button variant="outline" className="gap-1" onClick={() => { setFilters(emptyFilters); setPage(1); }}><RotateCcw className="w-3.5 h-3.5" />مسح</Button><Button variant="outline" className="gap-1" disabled={!subscribers.length} onClick={exportCsv}><Download className="w-3.5 h-3.5" />تصدير</Button>
+        </Card>
+        <SubscribersTable subscribers={subscribers} isLoading={subscribersQuery.isLoading} total={pagination.total} page={page} pages={pagination.pages} setPage={setPage} />
+      </TabsContent>
+    </Tabs>
+    <PlanFormDialog open={formOpen} onOpenChange={setFormOpen} editData={editData} isPending={save.isPending} onSave={(form) => {
+      if (!form.name.trim() || !form.nameAr.trim() || form.price < 0 || form.durationDays < 1) return toast.error("تحقق من الاسم والسعر والمدة");
+      save.mutate({ id: editData?._id, data: { ...form, features: lines(form.features), featuresAr: lines(form.featuresAr) } });
+    }} />
+    <PlanDeleteDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)} onConfirm={() => deleteId && disable.mutate(deleteId)} isPending={disable.isPending} />
+  </div>;
 }

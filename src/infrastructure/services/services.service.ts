@@ -1,7 +1,21 @@
 import { api } from "../api/client";
 
-export const getAllServices = () =>
-  api.get("/admin/services").then((r) => r.data);
+export type ServiceFilters = {
+  search?: string;
+  category?: string;
+  isActive?: string;
+  isEmergency?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+};
+
+const cleanParams = (params: Record<string, unknown>) =>
+  Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== "" && value !== "all"),
+  );
+
+export const getAllServices = (filters: ServiceFilters = {}, page = 1, limit = 100) =>
+  api.get("/admin/services", { params: cleanParams({ ...filters, page, limit }) }).then((r) => r.data);
 
 export const createService = (data: Record<string, unknown>) =>
   api.post("/admin/services", data).then((r) => r.data);

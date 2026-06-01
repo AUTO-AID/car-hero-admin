@@ -24,10 +24,6 @@ api.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       if (typeof window !== "undefined") {
-        const token = localStorage.getItem("admin_access_token");
-        if (token === "dev-admin-access-token") {
-          return Promise.reject(error);
-        }
       }
 
       localStorage.removeItem("admin_access_token");

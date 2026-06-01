@@ -1,124 +1,32 @@
 "use client";
 
+import { Calendar, Receipt } from "lucide-react";
+import { format } from "date-fns";
+import { ar } from "date-fns/locale";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, Shield, Star, Crown, Zap, Users } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import { ar } from "date-fns/locale";
 
-type MembershipSubscriber = {
-  _id: string;
-  user?: { fullName?: string };
-  plan?: { name?: string; tier?: string };
-  startDate: string | number | Date;
-  endDate: string | number | Date;
-  isActive: boolean;
-};
+type Subscriber = { _id: string; user?: { fullName?: string; phoneNumber?: string; email?: string }; plan?: { name?: string; nameAr?: string; tier?: string }; startDate: string; endDate: string; status: string; autoRenew?: boolean; amountPaid?: number };
+const labels: Record<string, string> = { active: "نشط", expired: "منتهي", cancelled: "ملغي", pending: "معلق" };
 
-interface SubscribersTableProps {
-  subscribers: MembershipSubscriber[];
-  isLoading: boolean;
-  total: number;
-  page: number;
-  setPage: (updater: number | ((p: number) => number)) => void;
-}
-
-const planIcons: Record<string, React.ElementType> = { basic: Shield, silver: Star, gold: Crown, platinum: Zap };
-const planColors: Record<string, { color: string; bg: string }> = {
-  basic:    { color: "text-slate-400",  bg: "bg-slate-500/10 border-slate-500/20" },
-  silver:   { color: "text-blue-400",   bg: "bg-blue-500/10 border-blue-500/20" },
-  gold:     { color: "text-amber-400",  bg: "bg-amber-500/10 border-amber-500/20" },
-  platinum: { color: "text-primary",    bg: "bg-primary/10 border-primary/20" },
-};
-
-export default function SubscribersTable({
-  subscribers,
-  isLoading,
-  total,
-  page,
-  setPage,
-}: SubscribersTableProps) {
-  return (
-    <Card className="bg-card border-border/40 overflow-hidden">
-      <div className="p-5 border-b border-border/30 bg-secondary/10 flex items-center justify-between">
-        <h3 className="font-semibold text-white text-sm">قائمة المشتركين</h3>
-        <Badge variant="outline" className="bg-secondary/50 text-muted-foreground border-border/40 text-[10px] tabular-nums">
-          {total} مشترك
-        </Badge>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-right">
-          <thead>
-            <tr className="border-b border-border/20">
-              {["المشترك", "الخطة", "تاريخ البداية", "تاريخ الانتهاء", "الحالة"].map((h) => (
-                <th key={h} className="px-5 py-3.5 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/10">
-            {isLoading
-              ? Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i}>
-                    {Array.from({ length: 5 }).map((_, j) => <td key={j} className="px-5 py-3.5"><Skeleton className="h-4 w-20" /></td>)}
-                  </tr>
-                ))
-              : subscribers.map((sub: MembershipSubscriber, i: number) => {
-                  const tier = sub.plan?.tier ?? "basic";
-                  const meta = planColors[tier] ?? planColors.basic;
-                  const Icon = planIcons[tier] ?? Shield;
-                  return (
-                    <tr key={sub._id} className="table-row-hover animate-fade-in" style={{ animationDelay: `${i * 25}ms` }}>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-2.5">
-                          <Avatar className="h-7 w-7 border border-border/30">
-                            <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary text-[10px] font-bold">
-                              {sub.user?.fullName?.charAt(0) ?? "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs font-medium text-foreground">{sub.user?.fullName}</span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <div className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-lg border ${meta.bg} ${meta.color}`}>
-                          <Icon className="w-3 h-3" />
-                          {sub.plan?.name}
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                          <Calendar className="w-3 h-3" />
-                          {formatDistanceToNow(new Date(sub.startDate), { locale: ar, addSuffix: true })}
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className={`text-xs font-medium ${new Date(sub.endDate) < new Date() ? "text-rose-400" : "text-emerald-400"}`}>
-                          {formatDistanceToNow(new Date(sub.endDate), { locale: ar, addSuffix: true })}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <Badge variant="outline" className={`text-[9px] ${sub.isActive ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border-rose-500/20"}`}>
-                          {sub.isActive ? "نشط" : "منتهي"}
-                        </Badge>
-                      </td>
-                    </tr>
-                  );
-                })}
-          </tbody>
-        </table>
-      </div>
-      <div className="flex items-center justify-between px-5 py-3 border-t border-border/20 bg-secondary/10">
-        <p className="text-[11px] text-muted-foreground/60">إجمالي <span className="font-bold text-foreground">{total}</span> مشترك</p>
-        <div className="flex items-center gap-1.5">
-          <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1} className="h-7 text-[11px] border-border/30 rounded-lg px-3">السابق</Button>
-          <span className="text-[11px] text-muted-foreground/60 px-2 tabular-nums">صفحة {page}</span>
-          <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)}
-            disabled={subscribers.length < 10} className="h-7 text-[11px] border-border/30 rounded-lg px-3">التالي</Button>
-        </div>
-      </div>
-    </Card>
-  );
+export default function SubscribersTable({ subscribers, isLoading, total, page, pages, setPage }: { subscribers: Subscriber[]; isLoading: boolean; total: number; page: number; pages: number; setPage: (value: number | ((p: number) => number)) => void }) {
+  return <Card className="bg-card border-border/40 overflow-hidden">
+    <div className="overflow-x-auto"><table className="w-full text-right"><thead><tr className="border-b border-border/20 bg-secondary/10">{["المشترك", "الخطة", "الفترة", "المبلغ", "التجديد", "الحالة"].map((h) => <th key={h} className="px-4 py-3 text-[10px] text-muted-foreground">{h}</th>)}</tr></thead>
+      <tbody className="divide-y divide-border/10">
+        {isLoading && Array.from({ length: 5 }).map((_, i) => <tr key={i}><td colSpan={6} className="px-4 py-4"><Skeleton className="h-4 w-full" /></td></tr>)}
+        {!isLoading && subscribers.map((sub) => <tr key={sub._id} className="table-row-hover">
+          <td className="px-4 py-3"><div className="flex items-center gap-2"><Avatar className="w-7 h-7"><AvatarFallback>{sub.user?.fullName?.[0] || "?"}</AvatarFallback></Avatar><div><p className="text-xs font-bold">{sub.user?.fullName || "مستخدم غير معروف"}</p><p className="text-[10px] text-muted-foreground">{sub.user?.phoneNumber || sub.user?.email || "-"}</p></div></div></td>
+          <td className="px-4 py-3 text-xs">{sub.plan?.nameAr || sub.plan?.name || "خطة غير متاحة"}</td>
+          <td className="px-4 py-3 text-[11px] text-muted-foreground"><p className="flex gap-1"><Calendar className="w-3 h-3" />{format(new Date(sub.startDate), "d MMM yyyy", { locale: ar })}</p><p>{format(new Date(sub.endDate), "d MMM yyyy", { locale: ar })}</p></td>
+          <td className="px-4 py-3 text-xs font-bold">{Number(sub.amountPaid || 0).toLocaleString("ar-SY")} ل.س</td>
+          <td className="px-4 py-3 text-xs">{sub.autoRenew ? "تلقائي" : "يدوي"}</td>
+          <td className="px-4 py-3"><Badge variant="outline" className={sub.status === "active" ? "badge-success" : sub.status === "cancelled" ? "badge-danger" : "badge-neutral"}>{labels[sub.status] || sub.status}</Badge></td>
+        </tr>)}
+        {!isLoading && !subscribers.length && <tr><td colSpan={6} className="py-14 text-center"><Receipt className="w-8 h-8 mx-auto text-muted-foreground/30" /><p className="text-sm mt-2">لا توجد اشتراكات مطابقة</p></td></tr>}
+      </tbody></table></div>
+    <div className="flex items-center justify-between px-4 py-3 border-t border-border/20 text-xs text-muted-foreground"><span>{total.toLocaleString("ar-SY")} اشتراك</span><div className="flex gap-2 items-center"><Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>السابق</Button><span>{page} / {pages}</span><Button size="sm" variant="outline" disabled={page >= pages} onClick={() => setPage((p) => p + 1)}>التالي</Button></div></div>
+  </Card>;
 }

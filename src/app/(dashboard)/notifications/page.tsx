@@ -1,189 +1,74 @@
 "use client";
 
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, Send, Users, Wrench, Crown, History, Sparkles } from "lucide-react";
-import { toast } from "sonner";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Bell, CalendarClock, CheckCircle2, History, RotateCcw, Search, Send, Users } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { StatCard } from "@/components/ui/stat-card";
+import { Textarea } from "@/components/ui/textarea";
+import { getNotificationCampaigns, getNotificationStats, sendNotificationCampaign } from "@/infrastructure/services/notifications.service";
 
-const RECENT_NOTIFS = [
-  { id: 1, title: "تم الموافقة على طلبك", body: "تمت الموافقة على طلب الصيانة #ORD-10023 وسيتم التواصل معك قريباً.", type: "order", target: "مستخدم محدد", time: new Date(Date.now() - 5 * 60 * 1000) },
-  { id: 2, title: "🚀 عرض نهاية الأسبوع", body: "احصل على خصم 20% على خدمات الغسيل الشامل باستخدام الكود WEEKEND20", type: "promo", target: "كل العملاء", time: new Date(Date.now() - 2 * 60 * 60 * 1000) },
-  { id: 3, title: "تحديث شروط الخدمة", body: "تم تحديث سياسة الخصوصية وشروط الاستخدام. يرجى المراجعة.", type: "system", target: "كل المزودين", time: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-  { id: 4, title: "مرحباً بك في Premium 👑", body: "تم ترقية حسابك إلى الباقة الذهبية بنجاح. استمتع بمزاياك الحصرية!", type: "subscription", target: "مشتركو Premium", time: new Date(Date.now() - 48 * 60 * 60 * 1000) },
-];
+const defaultFilters = { search: "", audience: "all", status: "all", type: "all" };
+const unwrap = (value: any) => value?.data?.data ?? value?.data ?? value ?? {};
+const audienceLabels: Record<string, string> = { all: "الجميع", users: "العملاء", premium: "مشتركو Premium", providers: "المزودون" };
+const statusLabels: Record<string, string> = { sent: "مرسلة", scheduled: "مجدولة", failed: "فشلت" };
 
 export default function NotificationsPage() {
-  const [target, setTarget] = useState("all");
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [sending, setSending] = useState(false);
-
-  const handleSend = () => {
-    if (!title.trim() || !body.trim()) { 
-      toast.error("يرجى إدخال عنوان ومحتوى الإشعار"); 
-      return; 
-    }
-    
-    setSending(true);
-    setTimeout(() => {
-      setSending(false);
-      toast.success(`✅ تم الإرسال بنجاح إلى: ${
-        target === "all" ? "جميع المستخدمين" : 
-        target === "premium" ? "مشتركي Premium" : 
-        target === "providers" ? "مزودي الخدمة" : "العملاء العاديين"
-      }`);
-      setTitle(""); 
-      setBody("");
-    }, 1000);
+  const client = useQueryClient();
+  const [page, setPage] = useState(1);
+  const [filters, setFilters] = useState(defaultFilters);
+  const [form, setForm] = useState({ audience: "all", type: "info", title: "", body: "", mode: "now", scheduledAt: "" });
+  const statsQuery = useQuery({ queryKey: ["notification-stats"], queryFn: getNotificationStats });
+  const campaignsQuery = useQuery({ queryKey: ["notification-campaigns", page, filters], queryFn: () => getNotificationCampaigns(page, 10, filters) });
+  const stats = unwrap(statsQuery.data); const result = unwrap(campaignsQuery.data); const campaigns = result.campaigns || []; const pagination = result.pagination || { total: 0, pages: 1 };
+  const send = useMutation({
+    mutationFn: sendNotificationCampaign,
+    onSuccess: (response) => { client.invalidateQueries({ queryKey: ["notification"] }); const data = unwrap(response); toast.success(data.deliveryStatus === "scheduled" ? `تمت جدولة الحملة لـ ${data.recipients} مستهدف` : `تم إرسال الحملة إلى ${data.recipients} مستهدف`); setForm((current) => ({ ...current, title: "", body: "", scheduledAt: "" })); },
+    onError: () => toast.error("تعذر إنشاء حملة الإشعارات"),
+  });
+  const submit = () => {
+    if (!form.title.trim() || !form.body.trim()) return toast.error("أدخل عنوان الإشعار ومحتواه");
+    if (form.body.length > 500) return toast.error("نص الإشعار أطول من الحد المسموح");
+    if (form.mode === "scheduled" && (!form.scheduledAt || new Date(form.scheduledAt) <= new Date())) return toast.error("اختر موعدًا مستقبليًا صالحًا");
+    send.mutate({ audience: form.audience, type: form.type, title: form.title, body: form.body, scheduledAt: form.mode === "scheduled" ? new Date(form.scheduledAt).toISOString() : undefined });
   };
-
-  return (
-    <div className="space-y-6">
-      <div className="mb-6 text-center sm:text-right">
-        <h2 className="text-xl font-bold text-white tracking-tight mb-2">إدارة الإشعارات (FCM)</h2>
-        <p className="text-sm text-muted-foreground max-w-2xl">إرسال إشعارات دفع (Push Notifications) للمستخدمين والمزودين عبر Firebase.</p>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        {/* Broadcast Form */}
-        <Card className="xl:col-span-5 p-6 sm:p-8 bg-card border-border/40 relative overflow-hidden animate-fade-in-up">
-          <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 rounded-bl-[100px] pointer-events-none" />
-          
-          <div className="flex items-center gap-3 mb-8 pb-4 border-b border-border/30">
-            <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 shadow-sm shadow-primary/10">
-              <Send className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-bold text-white text-base">إرسال إشعار جديد</h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5">يصل الإشعار فوراً إلى هواتف المستهدفين</p>
-            </div>
-          </div>
-          
-          <div className="space-y-5 relative">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold text-muted-foreground">الفئة المستهدفة</Label>
-              <Select value={target} onValueChange={(v) => setTarget(v || "all")}>
-                <SelectTrigger className="bg-secondary/40 border-border/50 text-sm h-11 rounded-xl focus:ring-primary/20">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-popover border-border/50 rounded-xl">
-                  <SelectItem value="all" className="cursor-pointer py-2.5 text-xs"><div className="flex items-center gap-2"><GlobeIcon className="w-3.5 h-3.5 text-blue-400" />الجميع (عملاء ومزودين)</div></SelectItem>
-                  <SelectItem value="users" className="cursor-pointer py-2.5 text-xs"><div className="flex items-center gap-2"><Users className="w-3.5 h-3.5 text-emerald-400" />العملاء فقط</div></SelectItem>
-                  <SelectItem value="premium" className="cursor-pointer py-2.5 text-xs"><div className="flex items-center gap-2"><Crown className="w-3.5 h-3.5 text-amber-400" />مشتركو Premium فقط</div></SelectItem>
-                  <SelectItem value="providers" className="cursor-pointer py-2.5 text-xs"><div className="flex items-center gap-2"><Wrench className="w-3.5 h-3.5 text-violet-400" />مزودو الخدمة فقط</div></SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold text-muted-foreground">عنوان الإشعار</Label>
-              <Input 
-                value={title} 
-                onChange={(e) => setTitle(e.target.value)} 
-                placeholder="مثال: 🚀 خصم خاص بمناسبة العيد"
-                className="h-11 rounded-xl bg-secondary/40 border-border/50 text-sm placeholder:text-muted-foreground/40 focus-visible:ring-primary/20" 
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold text-muted-foreground">نص الإشعار (محتوى الرسالة)</Label>
-              <Textarea 
-                value={body} 
-                onChange={(e) => setBody(e.target.value)} 
-                placeholder="اكتب رسالتك هنا..."
-                className="bg-secondary/40 border-border/50 text-sm resize-none rounded-xl min-h-[120px] placeholder:text-muted-foreground/40 focus-visible:ring-primary/20" 
-              />
-              <div className="flex justify-between items-center px-1">
-                <span className="text-[10px] text-muted-foreground/50 flex items-center gap-1"><Sparkles className="w-3 h-3" /> يدعم الإيموجي</span>
-                <span className={`text-[10px] font-mono ${body.length > 150 ? "text-amber-400" : "text-muted-foreground/50"}`}>{body.length}/200</span>
-              </div>
-            </div>
-            
-            <Button 
-              onClick={handleSend} 
-              disabled={sending}
-              className="w-full h-12 gap-2 text-sm font-bold bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all rounded-xl mt-4"
-            >
-              {sending ? (
-                <>جاري الإرسال...</>
-              ) : (
-                <><Send className="w-4 h-4" /> إرسال الإشعار الآن</>
-              )}
-            </Button>
-          </div>
-        </Card>
-
-        {/* History */}
-        <Card className="xl:col-span-7 bg-card border-border/40 overflow-hidden flex flex-col h-[600px] animate-fade-in-up" style={{ animationDelay: "100ms" }}>
-          <div className="p-5 border-b border-border/30 bg-secondary/10 flex items-center gap-3 shrink-0">
-            <History className="w-4 h-4 text-muted-foreground" />
-            <h3 className="font-semibold text-white text-sm">سجل الإشعارات المرسلة</h3>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto p-2">
-            <div className="divide-y divide-border/10">
-              {RECENT_NOTIFS.map((n, i) => (
-                <div key={n.id} className="p-4 hover:bg-secondary/20 transition-colors rounded-xl animate-fade-in" style={{ animationDelay: `${i * 50}ms` }}>
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-secondary/50 border border-border/50 flex items-center justify-center shrink-0">
-                      <Bell className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <p className="text-sm font-bold text-foreground truncate">{n.title}</p>
-                        <span className="text-[10px] text-muted-foreground/60 whitespace-nowrap">
-                          {formatDistanceToNow(n.time, { locale: ar, addSuffix: true })}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground/80 leading-relaxed mb-3">{n.body}</p>
-                      
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="bg-secondary/40 text-muted-foreground border-border/40 text-[9px] px-2 py-0">المستهدف: {n.target}</Badge>
-                        <Badge variant="outline" className={`text-[9px] px-2 py-0 border-transparent ${
-                          n.type === 'promo' ? 'bg-rose-500/10 text-rose-400' :
-                          n.type === 'subscription' ? 'bg-amber-500/10 text-amber-400' :
-                          n.type === 'system' ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'
-                        }`}>
-                          {n.type === 'promo' ? 'ترويجي' : n.type === 'subscription' ? 'اشتراكات' : n.type === 'system' ? 'نظام' : 'طلبات'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-      </div>
+  const setFilter = (key: keyof typeof filters, value: string) => { setFilters((current) => ({ ...current, [key]: value })); setPage(1); };
+  return <div className="space-y-5" dir="rtl">
+    <div><h2 className="text-lg font-bold">إدارة الإشعارات داخل التطبيق</h2><p className="text-xs text-muted-foreground">إنشاء حملات فورية أو مجدولة ومراجعة التسليم والقراءة. يتم التسليم داخل التطبيق وعبر WebSocket.</p></div>
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <StatCard title="إجمالي الإشعارات" value={Number(stats.notifications || 0).toLocaleString("ar-SY")} icon={Bell} iconColor="text-blue-400" iconBg="from-blue-500/15 to-blue-500/5" />
+      <StatCard title="غير المقروءة" value={Number(stats.unread || 0).toLocaleString("ar-SY")} icon={Bell} iconColor="text-amber-400" iconBg="from-amber-500/15 to-amber-500/5" />
+      <StatCard title="تم إرسالها" value={Number(stats.sent || 0).toLocaleString("ar-SY")} icon={CheckCircle2} iconColor="text-emerald-400" iconBg="from-emerald-500/15 to-emerald-500/5" />
+      <StatCard title="مجدولة" value={Number(stats.scheduled || 0).toLocaleString("ar-SY")} icon={CalendarClock} iconColor="text-violet-400" iconBg="from-violet-500/15 to-violet-500/5" />
     </div>
-  );
+    <div className="grid gap-5 xl:grid-cols-12">
+      <Card className="xl:col-span-4 p-5 bg-card border-border/40 space-y-4">
+        <h3 className="font-bold text-sm flex gap-2"><Send className="w-4 h-4 text-primary" />حملة إشعارات جديدة</h3>
+        <Field label="الجمهور المستهدف"><Choice value={form.audience} set={(value) => setForm({ ...form, audience: value })} items={[["all", "الجميع"], ["users", "العملاء"], ["premium", "مشتركو Premium"], ["providers", "المزودون"]]} /></Field>
+        <Field label="نوع الإشعار"><Choice value={form.type} set={(value) => setForm({ ...form, type: value })} items={[["info", "معلومة"], ["alert", "تنبيه"], ["system_alert", "تنبيه نظام"], ["reminder", "تذكير"]]} /></Field>
+        <Field label="وقت الإرسال"><Choice value={form.mode} set={(value) => setForm({ ...form, mode: value })} items={[["now", "إرسال فوري"], ["scheduled", "جدولة الإرسال"]]} /></Field>
+        {form.mode === "scheduled" && <Field label="موعد الإرسال"><Input type="datetime-local" value={form.scheduledAt} onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })} /></Field>}
+        <Field label="العنوان"><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={120} placeholder="عنوان واضح ومختصر" /></Field>
+        <Field label="المحتوى"><Textarea value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} maxLength={500} rows={5} placeholder="اكتب رسالة الإشعار..." /><p className="text-[10px] text-muted-foreground text-left">{form.body.length}/500</p></Field>
+        <Button className="w-full gap-2" disabled={send.isPending} onClick={submit}><Send className="w-4 h-4" />{send.isPending ? "جاري الحفظ..." : form.mode === "scheduled" ? "جدولة الحملة" : "إرسال الآن"}</Button>
+      </Card>
+      <Card className="xl:col-span-8 bg-card border-border/40 overflow-hidden">
+        <div className="p-4 border-b border-border/20 flex items-center gap-2"><History className="w-4 h-4 text-primary" /><h3 className="text-sm font-bold">سجل حملات الإشعارات</h3></div>
+        <div className="p-3 grid gap-2 md:grid-cols-6 border-b border-border/20"><div className="relative md:col-span-2"><Search className="absolute right-3 top-2.5 w-3.5 h-3.5 text-muted-foreground" /><Input className="pr-9" placeholder="بحث بالعنوان أو المحتوى..." value={filters.search} onChange={(e) => setFilter("search", e.target.value)} /></div><Choice value={filters.audience} set={(v) => setFilter("audience", v)} items={[["all", "كل الجماهير"], ["users", "العملاء"], ["premium", "Premium"], ["providers", "المزودون"]]} /><Choice value={filters.status} set={(v) => setFilter("status", v)} items={[["all", "كل الحالات"], ["sent", "مرسلة"], ["scheduled", "مجدولة"], ["failed", "فشلت"]]} /><Choice value={filters.type} set={(v) => setFilter("type", v)} items={[["all", "كل الأنواع"], ["info", "معلومة"], ["alert", "تنبيه"], ["system_alert", "نظام"], ["reminder", "تذكير"]]} /><Button variant="outline" onClick={() => { setFilters(defaultFilters); setPage(1); }}><RotateCcw className="w-3.5 h-3.5" />مسح</Button></div>
+        <div className="divide-y divide-border/10">{campaignsQuery.isLoading ? <p className="p-8 text-center text-sm text-muted-foreground">جاري تحميل السجل...</p> : campaigns.length ? campaigns.map((campaign: any) => <div key={campaign._id} className="p-4"><div className="flex gap-3 justify-between"><div><p className="text-sm font-bold">{campaign.title}</p><p className="text-xs text-muted-foreground mt-1">{campaign.body}</p><div className="flex flex-wrap gap-2 mt-3"><Badge variant="outline">{audienceLabels[campaign.audience] || campaign.audience}</Badge><Badge variant="outline">{statusLabels[campaign.deliveryStatus] || campaign.deliveryStatus}</Badge><Badge variant="outline"><Users className="w-3 h-3" />{campaign.recipients} مستهدف</Badge><Badge variant="outline">قرأها {campaign.readCount}</Badge></div></div><span className="text-[10px] text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(campaign.scheduledAt || campaign.sentAt || campaign.createdAt), { locale: ar, addSuffix: true })}</span></div></div>) : <p className="p-10 text-center text-sm text-muted-foreground">لا توجد حملات إدارية بعد</p>}</div>
+        <div className="p-3 flex justify-between text-xs text-muted-foreground border-t border-border/20"><span>{pagination.total} حملة</span><div className="flex gap-2 items-center"><Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>السابق</Button><span>{page} / {pagination.pages}</span><Button size="sm" variant="outline" disabled={page >= pagination.pages} onClick={() => setPage((p) => p + 1)}>التالي</Button></div></div>
+      </Card>
+    </div>
+  </div>;
 }
 
-function GlobeIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-      <path d="M2 12h20" />
-    </svg>
-  );
-}
+function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">{label}</Label>{children}</div>; }
+function Choice({ value, set, items }: { value: string; set: (value: string) => void; items: string[][] }) { return <Select value={value} onValueChange={(next) => set(next || items[0][0])}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{items.map(([key, label]) => <SelectItem key={key} value={key}>{label}</SelectItem>)}</SelectContent></Select>; }

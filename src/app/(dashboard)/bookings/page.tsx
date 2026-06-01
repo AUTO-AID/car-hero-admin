@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getAllBookings, updateBookingStatus, deleteBooking } from "@/infrastructure/services/bookings.service";
+import { getBookingsAnalytics } from "@/infrastructure/services/stats.service";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Clock, CheckCircle2, AlertCircle, CalendarCheck, CalendarX } from "lucide-react";
@@ -15,7 +16,7 @@ import { BookingDetailsDialog } from "./components/booking-details-dialog";
 
 export const statusMeta: Record<string, { color: string; label: string; icon: React.ElementType }> = {
   pending:     { color: "text-amber-400 bg-amber-400/10 border-amber-400/20", label: "قيد الانتظار", icon: Clock },
-  confirmed:   { color: "text-blue-400 bg-blue-400/10 border-blue-400/20", label: "مؤكّد", icon: CheckCircle2 },
+  accepted:    { color: "text-blue-400 bg-blue-400/10 border-blue-400/20", label: "مؤكّد", icon: CheckCircle2 },
   in_progress: { color: "text-primary bg-primary/10 border-primary/20", label: "جاري", icon: AlertCircle },
   completed:   { color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20", label: "مكتمل", icon: CalendarCheck },
   cancelled:   { color: "text-rose-400 bg-rose-400/10 border-rose-400/20", label: "ملغي", icon: CalendarX },
@@ -32,6 +33,12 @@ export default function BookingsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["admin-bookings", page, statusFilter],
     queryFn: () => getAllBookings(page, 10, statusFilter === "all" ? undefined : statusFilter),
+    retry: false,
+  });
+
+  const { data: analytics } = useQuery({
+    queryKey: ["admin-bookings-analytics"],
+    queryFn: getBookingsAnalytics,
     retry: false,
   });
 
@@ -58,7 +65,7 @@ export default function BookingsPage() {
     },
   });
 
-  const bookings: Booking[] = data?.data?.bookings ?? (Array.isArray(data?.data) ? data.data : (data?.bookings ?? []));
+  const bookings: Booking[] = data?.data?.bookings ?? data?.data?.orders ?? (Array.isArray(data?.data) ? data.data : (data?.bookings ?? data?.orders ?? []));
   const total = data?.data?.pagination?.total ?? data?.data?.total ?? data?.total ?? 0;
 
   return (
@@ -66,6 +73,7 @@ export default function BookingsPage() {
       {/* 1. Stats and charts cards layout */}
       <BookingsStats
         bookings={bookings}
+        analytics={analytics}
         statusFilter={statusFilter}
         onFilterSelect={(key) => {
           setStatusFilter(key);

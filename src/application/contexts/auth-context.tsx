@@ -14,26 +14,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const trimmedEmail = email.trim().toLowerCase();
 
-    // 1. Dev Bypass / Mock Login (Only if email or password is 'dev')
-    if (trimmedEmail === "dev" || password === "dev") {
-      const accessToken = "dev-admin-access-token";
-      const refreshToken = "dev-admin-refresh-token";
-      const adminData: Admin = {
-        _id: "dev-admin",
-        id: "dev-admin",
-        name: "Dev Admin",
-        email: trimmedEmail === "dev" ? "admin@carhero.dev" : trimmedEmail,
-        role: "admin",
-        permissions: ["*"],
-      };
-
-      storeSession(accessToken, refreshToken, adminData);
-      setToken(accessToken);
-      setAdmin(adminData);
-      return;
-    }
-
-    // 2. Real Backend Login
     const res = await api.post("/admin/login", { email: trimmedEmail, password });
     const payload = res.data?.data ?? res.data;
     const { accessToken, refreshToken, admin: rawAdmin } = payload ?? {};

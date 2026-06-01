@@ -1,37 +1,15 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-interface PlanDeleteDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onConfirm: () => void;
-  isPending: boolean;
-}
-
-export default function PlanDeleteDialog({
-  open,
-  onOpenChange,
-  onConfirm,
-  isPending,
-}: PlanDeleteDialogProps) {
+export default function PlanDeleteDialog({ open, onOpenChange, onConfirm, isPending }: { open: boolean; onOpenChange: (open: boolean) => void; onConfirm: () => void; isPending: boolean }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-border/50 rounded-2xl max-w-sm" dir="rtl">
-        <DialogHeader>
-          <DialogTitle className="text-white text-sm font-bold">تأكيد حذف الخطة</DialogTitle>
-        </DialogHeader>
-        <p className="text-sm text-muted-foreground text-right">سيتم حذف الخطة وسيفقد المشتركون الحاليون مزاياهم. هل تريد المتابعة؟</p>
-        <DialogFooter className="gap-2 mt-2">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="border-border/40">إلغاء</Button>
-          <Button size="sm" className="bg-destructive hover:bg-destructive/90 text-white"
-            onClick={onConfirm} disabled={isPending}>
-            {isPending ? "جاري الحذف..." : "حذف الخطة"}
-          </Button>
-        </DialogFooter>
+      <DialogContent className="bg-card border-border/50 rounded-xl max-w-sm" dir="rtl">
+        <DialogHeader><DialogTitle className="text-white text-sm font-bold">تعطيل خطة الاشتراك</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground text-right">سيتم منع الاشتراكات الجديدة في الخطة مع الاحتفاظ بسجلات ومزايا المشتركين الحاليين.</p>
+        <DialogFooter className="gap-2"><Button variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button><Button variant="destructive" onClick={onConfirm} disabled={isPending}>{isPending ? "جاري التعطيل..." : "تعطيل الخطة"}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );

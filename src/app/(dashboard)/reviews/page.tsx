@@ -1,116 +1,50 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Download, RotateCcw, Search } from "lucide-react";
 import { toast } from "sonner";
-import {
-  getReviews,
-  toggleReviewVisibility,
-  deleteReview,
-} from "@/infrastructure/services/reviews.service";
-import { getExcelSummary } from "@/infrastructure/services/stats.service";
-import ReviewsStats from "./components/reviews-stats";
-import ReviewsList from "./components/reviews-list";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { Review } from "@/domain/entities/review.types";
+import { deleteReview, getReviews, getReviewStats, toggleReviewVisibility, type ReviewFilters } from "@/infrastructure/services/reviews.service";
 import DeleteConfirmDialog from "./components/delete-confirm-dialog";
-import { Review } from "@/domain/entities/review.types";
+import ReviewsList from "./components/reviews-list";
+import ReviewsStats from "./components/reviews-stats";
+
+const defaults = { search: "", isReported: "all", isVisible: "all", rating: "all", hasResponse: "all", sortBy: "createdAt", sortOrder: "desc" as "asc" | "desc" };
+const unwrap = (value: any) => value?.data?.data ?? value?.data ?? value ?? {};
 
 export default function ReviewsPage() {
-  const queryClient = useQueryClient();
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
-  const [page, setPage] = useState(1);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const client = useQueryClient(); const [page, setPage] = useState(1); const [filters, setFilters] = useState(defaults); const [deleteId, setDeleteId] = useState<string | null>(null);
+  const reviewsQuery = useQuery({ queryKey: ["admin-reviews", page, filters], queryFn: () => getReviews(page, 12, filters as ReviewFilters) });
+  const statsQuery = useQuery({ queryKey: ["admin-review-stats"], queryFn: getReviewStats });
+  const result = unwrap(reviewsQuery.data); const reviews: Review[] = result.reviews || []; const pagination = result.pagination || { total: 0, pages: 1 };
+  const refresh = () => { client.invalidateQueries({ queryKey: ["admin-reviews"] }); client.invalidateQueries({ queryKey: ["admin-review-stats"] }); };
+  const toggle = useMutation({ mutationFn: ({ id, visible }: any) => toggleReviewVisibility(id, visible), onSuccess: () => { refresh(); toast.success("تم تحديث ظهور التقييم"); }, onError: () => toast.error("تعذر تحديث التقييم") });
+  const remove = useMutation({ mutationFn: deleteReview, onSuccess: () => { refresh(); setDeleteId(null); toast.success("تم حذف التقييم وإعادة احتساب تقييم المزود"); }, onError: () => toast.error("تعذر حذف التقييم") });
+  const setFilter = (key: keyof typeof filters, value: string) => { setFilters((current) => ({ ...current, [key]: value })); setPage(1); };
+  const exportCsv = () => { const rows = reviews.map((r) => [r.user?.fullName, r.provider?.businessName, r.rating, r.comment, r.isReported ? "نعم" : "لا", r.isVisible ? "ظاهر" : "مخفي", r.createdAt]); const csv = [["المستخدم", "المزود", "التقييم", "التعليق", "بلاغ", "الظهور", "التاريخ"], ...rows].map((row: unknown[]) => row.map((v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n"); const url = URL.createObjectURL(new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" })); const a = document.createElement("a"); a.href = url; a.download = "reviews.csv"; a.click(); URL.revokeObjectURL(url); };
+  return <div className="space-y-5" dir="rtl">
+    <div><h2 className="text-lg font-bold">إدارة ومراجعة التقييمات</h2><p className="text-xs text-muted-foreground">مراقبة تقييمات العملاء، البلاغات، ردود المزودين وحالة الظهور.</p></div>
+    <ReviewsStats stats={unwrap(statsQuery.data)} />
+    <Card className="p-3 bg-card border-border/40 grid gap-2 md:grid-cols-4 xl:grid-cols-10">
+      <div className="relative md:col-span-2"><Search className="absolute right-3 top-2.5 w-3.5 h-3.5 text-muted-foreground" /><Input className="pr-9" value={filters.search} onChange={(e) => setFilter("search", e.target.value)} placeholder="بحث بالمستخدم، المزود أو التعليق..." /></div>
+      <Filter value={filters.isReported} set={(v) => setFilter("isReported", v)} items={[["all", "كل البلاغات"], ["true", "مبلغ عنها"], ["false", "غير مبلغ عنها"]]} />
+      <Filter value={filters.isVisible} set={(v) => setFilter("isVisible", v)} items={[["all", "كل حالات الظهور"], ["true", "ظاهرة"], ["false", "مخفية"]]} />
+      <Filter value={filters.rating} set={(v) => setFilter("rating", v)} items={[["all", "كل النجوم"], ["5", "5 نجوم"], ["4", "4 نجوم"], ["3", "3 نجوم"], ["2", "نجمتان"], ["1", "نجمة واحدة"]]} />
+      <Filter value={filters.hasResponse} set={(v) => setFilter("hasResponse", v)} items={[["all", "كل الردود"], ["true", "مع رد"], ["false", "بدون رد"]]} />
+      <Filter value={filters.sortBy} set={(v) => setFilter("sortBy", v)} items={[["createdAt", "الفرز: التاريخ"], ["rating", "الفرز: النجوم"], ["helpfulCount", "الفرز: الإعجابات"]]} />
+      <Filter value={filters.sortOrder} set={(v) => setFilter("sortOrder", v as "asc" | "desc")} items={[["desc", "تنازلي"], ["asc", "تصاعدي"]]} />
+      <Button variant="outline" onClick={() => { setFilters(defaults); setPage(1); }}><RotateCcw className="w-3.5 h-3.5" />مسح</Button><Button variant="outline" disabled={!reviews.length} onClick={exportCsv}><Download className="w-3.5 h-3.5" />تصدير</Button>
+    </Card>
+    <ReviewsList reviews={reviews} isLoading={reviewsQuery.isLoading} total={pagination.total} page={page} pages={pagination.pages} setPage={setPage} onToggleVisibility={(id, visible) => toggle.mutate({ id, visible })} isTogglePending={toggle.isPending} onDeleteClick={setDeleteId} />
+    <DeleteConfirmDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)} onConfirm={() => deleteId && remove.mutate(deleteId)} isPending={remove.isPending} />
+  </div>;
+}
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin-reviews", page, filter],
-    queryFn: () => getReviews(page, filter),
-    retry: false,
-  });
-
-  const { data: excelSummary, isLoading: isSummaryLoading } = useQuery({
-    queryKey: ["admin-excel-summary"],
-    queryFn: getExcelSummary,
-    retry: 1,
-  });
-
-  const reviews: Review[] = data?.data?.reviews ?? (Array.isArray(data?.data) ? data.data : (data?.reviews ?? []));
-  const total = data?.data?.pagination?.total ?? data?.data?.total ?? data?.total ?? 0;
-
-  const toggleMut = useMutation({
-    mutationFn: ({ id, isVisible }: { id: string; isVisible: boolean }) =>
-      toggleReviewVisibility(id, isVisible),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-reviews"] });
-      toast.success("تم تحديث حالة التقييم");
-    },
-    onError: () => toast.error("فشل تحديث التقييم"),
-  });
-
-  const deleteMut = useMutation({
-    mutationFn: deleteReview,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-reviews"] });
-      toast.success("تم حذف التقييم نهائياً");
-      setDeleteId(null);
-    },
-    onError: () => {
-      toast.error("فشل حذف التقييم");
-      setDeleteId(null);
-    },
-  });
-
-  const filtered = search
-    ? reviews.filter((r) =>
-        r.user?.fullName?.includes(search) ||
-        r.provider?.businessName?.includes(search) ||
-        r.comment?.includes(search)
-      )
-    : reviews;
-
-  const reportedCount = filtered.filter((r) => r.isReported).length;
-  const avgRating = filtered.reduce((s, r) => s + r.rating, 0) / (filtered.length || 1);
-
-  const handleToggleVisibility = (id: string, isVisible: boolean) => {
-    toggleMut.mutate({ id, isVisible });
-  };
-
-  const handleDeleteConfirm = () => {
-    if (deleteId) {
-      deleteMut.mutate(deleteId);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <ReviewsStats
-        total={total}
-        reportedCount={reportedCount}
-        avgRating={avgRating}
-        ratingDistribution={excelSummary?.RATING_DISTRIBUTION}
-        isLoading={isSummaryLoading}
-      />
-
-      <ReviewsList
-        reviews={filtered}
-        isLoading={isLoading}
-        total={total}
-        search={search}
-        setSearch={setSearch}
-        filter={filter}
-        setFilter={setFilter}
-        page={page}
-        setPage={setPage}
-        onToggleVisibility={handleToggleVisibility}
-        isTogglePending={toggleMut.isPending}
-        onDeleteClick={setDeleteId}
-      />
-
-      <DeleteConfirmDialog
-        open={!!deleteId}
-        onOpenChange={(open) => !open && setDeleteId(null)}
-        onConfirm={handleDeleteConfirm}
-        isPending={deleteMut.isPending}
-      />
-    </div>
-  );
+function Filter({ value, set, items }: { value: string; set: (value: string) => void; items: string[][] }) {
+  return <Select value={value} onValueChange={(v) => set(v || "all")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{items.map(([key, label]) => <SelectItem key={key} value={key}>{label}</SelectItem>)}</SelectContent></Select>;
 }

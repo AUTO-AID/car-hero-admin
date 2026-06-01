@@ -1,15 +1,12 @@
 export interface Review {
   _id: string;
-  user: {
-    fullName: string;
-  };
-  provider: {
-    businessName: string;
-  };
+  user?: { fullName?: string; phoneNumber?: string };
+  provider?: { businessName?: string; phone?: string };
   rating: number;
-  comment: string;
+  comment?: string;
   isVisible: boolean;
   isReported: boolean;
+  reportReason?: string;
   createdAt: Date | string;
   serviceQuality?: number;
   punctuality?: number;
@@ -17,9 +14,6 @@ export interface Review {
   valueForMoney?: number;
   providerResponse?: string;
   providerRespondedAt?: Date | string;
-}
-
-export interface ReviewResponse {
-  reviews: Review[];
-  total: number;
+  response?: { comment?: string; repliedAt?: Date | string };
+  helpfulCount?: number;
 }

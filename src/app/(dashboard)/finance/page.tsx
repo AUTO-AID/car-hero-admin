@@ -1,57 +1,142 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, BarChart2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { BarChart2, Download, RotateCcw, Search, SlidersHorizontal, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  getPlatformWallet,
   approvePayout,
   getAllTransactions,
   getPayoutRequests,
+  getPlatformWallet,
+  type WalletTransactionFilters,
 } from "@/infrastructure/services/finance.service";
-import FinanceStats from "./components/finance-stats";
 import FinanceCharts from "./components/finance-charts";
-import TransactionsTable from "./components/transactions-table";
+import FinanceStats from "./components/finance-stats";
 import PayoutRequests from "./components/payout-requests";
+import TransactionsTable, { type WalletTransaction } from "./components/transactions-table";
 
+const defaultFilters: Required<Pick<WalletTransactionFilters, "search" | "type" | "status" | "ownerType" | "referenceType" | "dateFrom" | "dateTo" | "amountMin" | "amountMax" | "sortBy" | "sortOrder">> = {
+  search: "",
+  type: "all",
+  status: "all",
+  ownerType: "all",
+  referenceType: "all",
+  dateFrom: "",
+  dateTo: "",
+  amountMin: "",
+  amountMax: "",
+  sortBy: "createdAt",
+  sortOrder: "desc",
+};
+
+const unwrapList = (payload: any) => {
+  const body = payload?.data && (Array.isArray(payload.data) || payload.data.data) ? payload.data : payload;
+  const data = Array.isArray(body?.data) ? body.data : Array.isArray(body) ? body : [];
+  const pagination = body?.pagination || {
+    page: 1,
+    limit: data.length,
+    total: body?.total ?? data.length,
+    totalPages: Math.max(1, Math.ceil((body?.total ?? data.length) / Math.max(data.length, 1))),
+  };
+  return { data, pagination, total: body?.total ?? pagination.total ?? data.length };
+};
+
+const csvCell = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+
+const downloadCsv = (rows: WalletTransaction[], filename: string) => {
+  const header = ["رقم العملية", "المالك", "نوع المالك", "النوع", "التصنيف", "المبلغ", "الحالة", "طريقة الدفع", "المرجع", "التاريخ", "الوصف"];
+  const csvRows = rows.map((tx) => [
+    tx.transactionNumber || tx._id || tx.id,
+    tx.ownerName || tx.providerName,
+    tx.ownerType,
+    tx.type,
+    tx.referenceType,
+    tx.amount,
+    tx.status,
+    tx.paymentMethod,
+    tx.referenceId,
+    tx.createdAt ? new Date(tx.createdAt).toISOString() : "",
+    tx.description,
+  ].map(csvCell).join(","));
+  const blob = new Blob(["\ufeff", [header.map(csvCell).join(","), ...csvRows].join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+};
 
 export default function FinancePage() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState("overview");
+  const [page, setPage] = useState(1);
+  const [payoutPage, setPayoutPage] = useState(1);
+  const [payoutStatus, setPayoutStatus] = useState("pending");
+  const [filters, setFilters] = useState(defaultFilters);
   const [approvingId, setApprovingId] = useState<string | null>(null);
 
-  const { data: walletData } = useQuery({
+  const queryFilters = useMemo(() => ({ ...filters }), [filters]);
+
+  const walletQuery = useQuery({
     queryKey: ["platform-wallet"],
     queryFn: getPlatformWallet,
     retry: false,
   });
 
-  const { data: transactionsData } = useQuery({
-    queryKey: ["transactions", tab],
-    queryFn: () => getAllTransactions(1, 20),
-    enabled: tab === "transactions" || tab === "overview" || tab === "flow",
+  const transactionsQuery = useQuery({
+    queryKey: ["wallet-transactions", page, queryFilters],
+    queryFn: () => getAllTransactions(page, 15, queryFilters),
   });
 
-  const { data: payoutsData } = useQuery({
-    queryKey: ["payout-requests"],
-    queryFn: () => getPayoutRequests(1, 20),
-    enabled: tab === "payouts",
+  const chartQuery = useQuery({
+    queryKey: ["wallet-transactions-chart", queryFilters.dateFrom, queryFilters.dateTo],
+    queryFn: () => getAllTransactions(1, 500, {
+      dateFrom: queryFilters.dateFrom,
+      dateTo: queryFilters.dateTo,
+      sortBy: "createdAt",
+      sortOrder: "asc",
+    }),
   });
 
+  const payoutsQuery = useQuery({
+    queryKey: ["payout-requests", payoutPage, payoutStatus],
+    queryFn: () => getPayoutRequests(payoutPage, 10, payoutStatus),
+  });
+
+  const walletData = walletQuery.data?.data?.data ?? walletQuery.data?.data ?? {};
   const wallet = {
-    balance: walletData?.data?.platformBalance ?? walletData?.data?.balance ?? 0,
-    totalCommissions: walletData?.data?.totalCommissionEarned ?? walletData?.data?.totalCommissions ?? 0,
-    totalPayouts: walletData?.data?.totalPayoutsProcessed ?? walletData?.data?.totalPayouts ?? 0,
+    balance: Number(walletData.platformBalance ?? walletData.balance ?? 0),
+    totalCommissions: Number(walletData.totalCommissionEarned ?? 0),
+    totalPayouts: Number(walletData.totalPayoutsProcessed ?? 0),
+    pendingPayoutsAmount: Number(walletData.pendingPayoutsAmount ?? 0),
+    pendingPayoutsCount: Number(walletData.pendingPayoutsCount ?? 0),
+    transactionsCount: Number(walletData.transactionsCount ?? 0),
   };
 
+  const transactionsResult = unwrapList(transactionsQuery.data);
+  const transactions = transactionsResult.data as WalletTransaction[];
+  const chartTransactions = unwrapList(chartQuery.data).data as WalletTransaction[];
+  const payoutsResult = unwrapList(payoutsQuery.data);
+  const payouts = payoutsResult.data as any[];
+
   const payoutMut = useMutation({
-    mutationFn: ({ id, action }: { id: string; action: "complete" | "reject" }) =>
-      approvePayout(id, action),
+    mutationFn: ({ id, action }: { id: string; action: "complete" | "reject" }) => {
+      const note = action === "reject" ? "تم الرفض من لوحة الإدارة" : "تم التحويل من لوحة الإدارة";
+      return approvePayout(id, action, note);
+    },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["platform-wallet"] });
-      toast.success(vars.action === "complete" ? "✅ تم تحويل الدفعة بنجاح" : "❌ تم رفض طلب السحب");
+      queryClient.invalidateQueries({ queryKey: ["wallet-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["wallet-transactions-chart"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-requests"] });
+      toast.success(vars.action === "complete" ? "تم تحويل الدفعة بنجاح" : "تم رفض طلب السحب وإرجاع المبلغ");
       setApprovingId(null);
     },
     onError: () => {
@@ -60,13 +145,16 @@ export default function FinancePage() {
     },
   });
 
+  const setFilter = (key: keyof typeof filters, value: string) => {
+    setFilters((current) => ({ ...current, [key]: value }));
+    setPage(1);
+  };
+
   const handleApprovePayout = (id: string, action: "complete" | "reject") => {
+    if (!id) return;
     setApprovingId(id);
     payoutMut.mutate({ id, action });
   };
-
-  const transactions = transactionsData?.data?.transactions ?? [];
-  const payouts: any[] = payoutsData?.data?.transactions ?? payoutsData?.transactions ?? [];
 
   return (
     <div className="space-y-6">
@@ -74,7 +162,9 @@ export default function FinancePage() {
         balance={wallet.balance}
         totalCommissions={wallet.totalCommissions}
         totalPayouts={wallet.totalPayouts}
-        payoutsCount={payouts.length}
+        pendingPayoutsAmount={wallet.pendingPayoutsAmount}
+        payoutsCount={wallet.pendingPayoutsCount}
+        transactionsCount={wallet.transactionsCount}
       />
 
       <Tabs value={tab} onValueChange={setTab} className="w-full">
@@ -86,37 +176,156 @@ export default function FinancePage() {
             <BarChart2 className="w-3.5 h-3.5" /> التدفق المالي
           </TabsTrigger>
           <TabsTrigger value="transactions" className="text-xs data-[state=active]:bg-card rounded-lg px-6 gap-2">
-            سجل المعاملات
+            سجل العمليات
           </TabsTrigger>
           <TabsTrigger value="payouts" className="text-xs data-[state=active]:bg-card rounded-lg px-6 gap-2">
             طلبات السحب
-            {payouts.length > 0 && (
+            {wallet.pendingPayoutsCount > 0 && (
               <span className="flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-amber-500 text-[10px] font-bold text-amber-950">
-                {payouts.length}
+                {wallet.pendingPayoutsCount}
               </span>
             )}
           </TabsTrigger>
         </TabsList>
 
+        <Card className="p-4 mb-6 bg-card border-border/40">
+          <div className="flex items-center gap-2 mb-3 text-xs font-bold text-white">
+            <SlidersHorizontal className="w-4 h-4 text-primary" />
+            فلاتر المحفظة
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
+            <div className="relative xl:col-span-2">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
+              <Input
+                value={filters.search}
+                onChange={(event) => setFilter("search", event.target.value)}
+                placeholder="بحث بالعملية، المالك، الوصف أو المرجع..."
+                className="h-9 pr-9 bg-background/80 border-border/40 text-xs"
+              />
+            </div>
+            <Select value={filters.type} onValueChange={(value) => setFilter("type", value || "all")}>
+              <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الأنواع</SelectItem>
+                <SelectItem value="credit">إيداع</SelectItem>
+                <SelectItem value="debit">سحب</SelectItem>
+                <SelectItem value="refund">استرداد</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filters.status} onValueChange={(value) => setFilter("status", value || "all")}>
+              <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الحالات</SelectItem>
+                <SelectItem value="pending">معلق</SelectItem>
+                <SelectItem value="completed">مكتمل</SelectItem>
+                <SelectItem value="failed">فشل</SelectItem>
+                <SelectItem value="reversed">معكوس</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filters.ownerType} onValueChange={(value) => setFilter("ownerType", value || "all")}>
+              <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل المالكين</SelectItem>
+                <SelectItem value="user">عملاء</SelectItem>
+                <SelectItem value="provider">مزودون</SelectItem>
+                <SelectItem value="system">النظام</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filters.referenceType} onValueChange={(value) => setFilter("referenceType", value || "all")}>
+              <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل المراجع</SelectItem>
+                <SelectItem value="order">طلبات</SelectItem>
+                <SelectItem value="topup">شحن</SelectItem>
+                <SelectItem value="payout,withdrawal">سحوبات</SelectItem>
+                <SelectItem value="payout_reversal">إرجاع سحب</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input type="date" value={filters.dateFrom} onChange={(event) => setFilter("dateFrom", event.target.value)} className="h-9 bg-background/80 border-border/40 text-xs" />
+            <Input type="date" value={filters.dateTo} onChange={(event) => setFilter("dateTo", event.target.value)} className="h-9 bg-background/80 border-border/40 text-xs" />
+            <Input value={filters.amountMin} onChange={(event) => setFilter("amountMin", event.target.value)} placeholder="أقل مبلغ" className="h-9 bg-background/80 border-border/40 text-xs" />
+            <Input value={filters.amountMax} onChange={(event) => setFilter("amountMax", event.target.value)} placeholder="أعلى مبلغ" className="h-9 bg-background/80 border-border/40 text-xs" />
+            <Select value={filters.sortBy} onValueChange={(value) => setFilter("sortBy", value || "createdAt")}>
+              <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="createdAt">التاريخ</SelectItem>
+                <SelectItem value="amount">المبلغ</SelectItem>
+                <SelectItem value="status">الحالة</SelectItem>
+                <SelectItem value="type">النوع</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filters.sortOrder} onValueChange={(value) => setFilter("sortOrder", (value || "desc") as "asc" | "desc")}>
+              <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="desc">تنازلي</SelectItem>
+                <SelectItem value="asc">تصاعدي</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex gap-2 xl:col-span-2">
+              <Button variant="outline" className="h-9 text-xs gap-2" onClick={() => { setFilters(defaultFilters); setPage(1); }}>
+                <RotateCcw className="w-3.5 h-3.5" /> إعادة ضبط
+              </Button>
+              <Button variant="outline" className="h-9 text-xs gap-2" onClick={() => downloadCsv(transactions, "wallet-transactions.csv")} disabled={!transactions.length}>
+                <Download className="w-3.5 h-3.5" /> تصدير المعروض
+              </Button>
+            </div>
+          </div>
+        </Card>
+
         <TabsContent value="overview" className="m-0 focus-visible:outline-none">
-          <FinanceCharts type="overview" transactions={transactions} />
+          <FinanceCharts type="overview" transactions={chartTransactions} />
         </TabsContent>
 
         <TabsContent value="flow" className="m-0 focus-visible:outline-none">
-          <FinanceCharts type="flow" transactions={transactions} />
+          <FinanceCharts type="flow" transactions={chartTransactions} />
         </TabsContent>
 
-        <TabsContent value="transactions" className="m-0 focus-visible:outline-none">
-          <TransactionsTable transactions={transactions} />
+        <TabsContent value="transactions" className="m-0 focus-visible:outline-none space-y-4">
+          <TransactionsTable transactions={transactions} isLoading={transactionsQuery.isLoading} />
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+            <p>يتم عرض {transactions.length.toLocaleString("ar-SY")} من أصل {Number(transactionsResult.total || 0).toLocaleString("ar-SY")} عملية</p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled={page <= 1 || transactionsQuery.isFetching} onClick={() => setPage((p) => Math.max(1, p - 1))}>السابق</Button>
+              <span className="px-3 py-1 rounded-lg bg-secondary/40 text-white">
+                {page.toLocaleString("ar-SY")} / {Number(transactionsResult.pagination.totalPages || 1).toLocaleString("ar-SY")}
+              </span>
+              <Button variant="outline" size="sm" disabled={page >= transactionsResult.pagination.totalPages || transactionsQuery.isFetching} onClick={() => setPage((p) => p + 1)}>التالي</Button>
+            </div>
+          </div>
         </TabsContent>
 
-        <TabsContent value="payouts" className="m-0 focus-visible:outline-none">
+        <TabsContent value="payouts" className="m-0 focus-visible:outline-none space-y-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <Select value={payoutStatus} onValueChange={(value) => { setPayoutStatus(value || "pending"); setPayoutPage(1); }}>
+              <SelectTrigger className="w-full sm:w-44 h-9 bg-background/80 border-border/40 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">طلبات معلقة</SelectItem>
+                <SelectItem value="completed">منفذة</SelectItem>
+                <SelectItem value="failed">مرفوضة</SelectItem>
+                <SelectItem value="all">كل طلبات السحب</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" className="h-9 text-xs gap-2" onClick={() => downloadCsv(payouts, "wallet-payouts.csv")} disabled={!payouts.length}>
+              <Download className="w-3.5 h-3.5" /> تصدير الطلبات
+            </Button>
+          </div>
           <PayoutRequests
             payouts={payouts}
             approvingId={approvingId}
             onApprove={handleApprovePayout}
             isPending={payoutMut.isPending}
+            isLoading={payoutsQuery.isLoading}
           />
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+            <p>يتم عرض {payouts.length.toLocaleString("ar-SY")} من أصل {Number(payoutsResult.total || 0).toLocaleString("ar-SY")} طلب</p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled={payoutPage <= 1 || payoutsQuery.isFetching} onClick={() => setPayoutPage((p) => Math.max(1, p - 1))}>السابق</Button>
+              <span className="px-3 py-1 rounded-lg bg-secondary/40 text-white">
+                {payoutPage.toLocaleString("ar-SY")} / {Number(payoutsResult.pagination.totalPages || 1).toLocaleString("ar-SY")}
+              </span>
+              <Button variant="outline" size="sm" disabled={payoutPage >= payoutsResult.pagination.totalPages || payoutsQuery.isFetching} onClick={() => setPayoutPage((p) => p + 1)}>التالي</Button>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

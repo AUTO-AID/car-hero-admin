@@ -24,6 +24,9 @@ export const getGeneralStats = () =>
 export const getBookingStats = () =>
   api.get("/admin/stats/orders").then((r) => r.data);
 
+export const getBookingsAnalytics = () =>
+  api.get("/admin/stats/bookings-analytics").then((r) => r.data);
+
 export const getMonthlyRevenue = () =>
   api.get("/admin/stats/revenue").then((r) => r.data);
 
