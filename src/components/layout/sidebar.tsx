@@ -225,7 +225,7 @@ export function Sidebar({ collapsed = false, onCollapse }: SidebarProps) {
                 {admin?.name || "المسؤول"}
               </p>
               <p className="text-[10px] text-muted-foreground/60 truncate mt-0.5">
-                "?????"
+                {admin?.role === 'superadmin' ? 'مدير عام' : admin?.role === 'admin' ? 'مسؤول' : 'مستخدم'}
               </p>
             </div>
             <button

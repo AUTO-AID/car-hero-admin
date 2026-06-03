@@ -246,14 +246,6 @@ export default function ProvidersPage() {
               <Download className="w-4 h-4" />
               تصدير الصفحة
             </Button>
-            <Button
-              disabled
-              className="h-10 gap-2 bg-primary/50 text-primary-foreground font-bold cursor-not-allowed"
-              title="إضافة مزود جديد تحتاج endpoint إنشاء آمن في الباكند"
-            >
-              <Wrench className="w-4 h-4" />
-              إضافة مزود
-            </Button>
           </div>
         ) : (
           <span className="text-xs font-semibold text-violet-400 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20">
