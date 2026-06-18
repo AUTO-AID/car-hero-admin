@@ -34,4 +34,4 @@ export const getTopServices = () =>
   api.get("/admin/stats/top-services").then((r) => r.data);
 
 export const getExcelSummary = () =>
-  api.get("/admin/dashboard/excel-summary").then((r) => r.data);
+  api.get("/admin/dashboard/excel-summary").then((r) => r.data?.data ?? r.data);

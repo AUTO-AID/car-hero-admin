@@ -402,6 +402,7 @@ export function ProvidersStats({ summary, isLoading = false }: ProvidersStatsPro
   const normalProviders = Math.max(totalProviders - emergencyProviders, 0);
   const verifiedProviders = totals.verifiedProviders ?? 0;
   const unverifiedProviders = Math.max(totalProviders - verifiedProviders, 0);
+  const approvedProviders = totals.approvedProviders ?? verifiedProviders;
 
   const cityChartOption = {
     ...cityChart,
@@ -474,7 +475,7 @@ export function ProvidersStats({ summary, isLoading = false }: ProvidersStatsPro
     ...approvalGaugeOption,
     series: [{
       ...approvalGaugeOption.series[0],
-      data: [{ value: totalProviders > 0 ? Math.round((verifiedProviders / totalProviders) * 100) : 0, name: "Ù†Ø³Ø¨Ø© Ø§Ù„Ø§Ø¹ØªÙ…Ø§Ø¯" }],
+      data: [{ value: totalProviders > 0 ? Math.round((approvedProviders / totalProviders) * 100) : 0, name: "Ù†Ø³Ø¨Ø© Ø§Ù„Ø§Ø¹ØªÙ…Ø§Ø¯" }],
     }],
   };
 
@@ -508,10 +509,10 @@ export function ProvidersStats({ summary, isLoading = false }: ProvidersStatsPro
           <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
           <div className="mb-4 relative z-10">
             <h3 className="font-semibold text-white text-sm tracking-tight">المزودين حسب المدينة</h3>
-            <p className="text-[10px] text-muted-foreground/60 mt-0.5">14 مدينة نشطة — Horizontal Bar</p>
+            <p className="text-[10px] text-muted-foreground/60 mt-0.5">{cityData.length.toLocaleString("ar-EG")} مدينة مسجلة — بيانات مباشرة</p>
           </div>
           <div className="relative z-10">
-            {isMounted && <ReactECharts option={cityChartOption} style={{ height: 320 }} opts={{ renderer: "canvas" }} notMerge lazyUpdate />}
+            {isMounted && <ReactECharts key={`cities-${totalProviders}`} option={cityChartOption} style={{ height: 320 }} opts={{ renderer: "canvas" }} notMerge />}
           </div>
         </Card>
 
@@ -523,7 +524,7 @@ export function ProvidersStats({ summary, isLoading = false }: ProvidersStatsPro
               <p className="text-[10px] text-muted-foreground/60 mt-0.5">Donut — تأثيرات ظل</p>
             </div>
             <div className="relative z-10 flex-1 flex flex-col justify-center">
-              {isMounted && <ReactECharts option={emergencyDonutOption} style={{ height: 180 }} opts={{ renderer: "canvas" }} notMerge lazyUpdate />}
+              {isMounted && <ReactECharts key={`emergency-${emergencyProviders}-${totalProviders}`} option={emergencyDonutOption} style={{ height: 180 }} opts={{ renderer: "canvas" }} notMerge />}
               <div className="flex justify-center gap-6 mt-2">
                 <div className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: "#ef4444", boxShadow: `0 0 6px #ef444460` }} />
@@ -546,7 +547,7 @@ export function ProvidersStats({ summary, isLoading = false }: ProvidersStatsPro
               <p className="text-[10px] text-muted-foreground/60 mt-0.5">Donut — نسبة الموثقين</p>
             </div>
             <div className="relative z-10 flex-1 flex flex-col justify-center">
-              {isMounted && <ReactECharts option={verifiedDonutOption} style={{ height: 180 }} opts={{ renderer: "canvas" }} notMerge lazyUpdate />}
+              {isMounted && <ReactECharts key={`verified-${verifiedProviders}-${totalProviders}`} option={verifiedDonutOption} style={{ height: 180 }} opts={{ renderer: "canvas" }} notMerge />}
               <div className="flex justify-center gap-6 mt-2">
                 <div className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: "#10b981", boxShadow: `0 0 6px #10b98160` }} />
@@ -569,11 +570,11 @@ export function ProvidersStats({ summary, isLoading = false }: ProvidersStatsPro
         <Card className="p-5 bg-card/70 backdrop-blur-xl border border-border/40 hover:border-border/70 transition-all duration-300 group relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
           <div className="mb-4 relative z-10">
-            <h3 className="font-semibold text-white text-sm tracking-tight">مقارنة أداء المزودين</h3>
-            <p className="text-[10px] text-muted-foreground/60 mt-0.5">Radar Chart — متميزون vs عاديون</p>
+            <h3 className="font-semibold text-white text-sm tracking-tight">مؤشرات أداء المزودين</h3>
+            <p className="text-[10px] text-muted-foreground/60 mt-0.5">متوسطات فعلية محسوبة من قاعدة البيانات</p>
           </div>
           <div className="relative z-10">
-            {isMounted && <ReactECharts option={performanceRadar} style={{ height: 260 }} opts={{ renderer: "canvas" }} notMerge lazyUpdate />}
+            {isMounted && <ReactECharts key={`performance-${totalProviders}`} option={performanceRadar} style={{ height: 260 }} opts={{ renderer: "canvas" }} notMerge />}
           </div>
         </Card>
 
@@ -584,7 +585,7 @@ export function ProvidersStats({ summary, isLoading = false }: ProvidersStatsPro
             <p className="text-[10px] text-muted-foreground/60 mt-0.5">Gauge Chart — نسبة الاعتماد</p>
           </div>
           <div className="relative z-10">
-            {isMounted && <ReactECharts option={approvalGauge} style={{ height: 260 }} opts={{ renderer: "canvas" }} notMerge lazyUpdate />}
+            {isMounted && <ReactECharts key={`approval-${approvedProviders}-${totalProviders}`} option={approvalGauge} style={{ height: 260 }} opts={{ renderer: "canvas" }} notMerge />}
           </div>
         </Card>
       </div>
@@ -638,7 +639,7 @@ export function ProvidersStats({ summary, isLoading = false }: ProvidersStatsPro
               <p className="text-[10px] text-muted-foreground/60 mt-0.5">Stacked Bar — محسّن بتدرجات</p>
             </div>
             <div className="relative z-10">
-              {isMounted && <ReactECharts option={workingDaysOption} style={{ height: 280 }} opts={{ renderer: "canvas" }} notMerge lazyUpdate />}
+              {isMounted && <ReactECharts key={`working-days-${workingHours.dayStats.length}-${totalProviders}`} option={workingDaysOption} style={{ height: 280 }} opts={{ renderer: "canvas" }} notMerge />}
             </div>
           </Card>
 
@@ -649,7 +650,7 @@ export function ProvidersStats({ summary, isLoading = false }: ProvidersStatsPro
               <p className="text-[10px] text-muted-foreground/60 mt-0.5">Bar — تدرج لوني بالساعات</p>
             </div>
             <div className="relative z-10">
-              {isMounted && <ReactECharts option={avgHoursOption} style={{ height: 280 }} opts={{ renderer: "canvas" }} notMerge lazyUpdate />}
+              {isMounted && <ReactECharts key={`average-hours-${workingHours.dayStats.length}-${totalProviders}`} option={avgHoursOption} style={{ height: 280 }} opts={{ renderer: "canvas" }} notMerge />}
             </div>
           </Card>
         </div>

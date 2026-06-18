@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Car, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/application/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,12 +46,11 @@ export default function LoginPage() {
 
       <section className="relative w-full max-w-[430px] animate-fade-in-up">
         <div className="mb-7 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 shadow-lg shadow-primary/10">
-            <Car className="h-8 w-8 text-primary" />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">
-            Car<span className="text-primary">Hero</span>
-          </h1>
+          <img
+            src="/logo_carHero.png"
+            alt="Car Hero"
+            className="mx-auto mb-4 h-auto w-[220px] object-contain drop-shadow-[0_10px_28px_rgba(143,92,177,0.35)]"
+          />
           <p className="mt-2 text-sm text-muted-foreground">تسجيل دخول لوحة الإدارة</p>
         </div>
 

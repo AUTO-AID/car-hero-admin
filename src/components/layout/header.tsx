@@ -3,9 +3,11 @@
 import { Bell, Search, RefreshCw, CalendarDays, ChevronRight, Command, Zap, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { getUnreadNotificationCount } from "@/infrastructure/services/notifications.service";
 
 const pageTitles: Record<string, { title: string; desc: string; emoji?: string; breadcrumbs?: { label: string; href: string }[] }> = {
   "/":              { title: "لوحة القيادة", desc: "نظرة عامة على أداء المنصة", emoji: "📊" },
@@ -38,7 +40,13 @@ interface HeaderProps {
 export function Header({ onRefresh, isRefreshing }: HeaderProps) {
   const pathname = usePathname();
   const page = pageTitles[pathname] || pageTitles["/"];
-  const [notifCount] = useState(3);
+  const { data: unreadNotifications } = useQuery({
+    queryKey: ["notifications-unread-count"],
+    queryFn: getUnreadNotificationCount,
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
+  });
+  const notifCount = Number(unreadNotifications?.data?.count ?? unreadNotifications?.count ?? 0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -222,7 +230,7 @@ export function Header({ onRefresh, isRefreshing }: HeaderProps) {
                 </>
               ) : (
                 <div className="py-10 text-center text-muted-foreground/40 text-sm">
-                  لا توجد نتائج لـ "{searchQuery}"
+                  لا توجد نتائج لـ &quot;{searchQuery}&quot;
                 </div>
               )}
             </div>

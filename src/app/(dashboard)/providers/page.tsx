@@ -121,6 +121,8 @@ export default function ProvidersPage() {
     queryKey: ["admin-excel-summary"],
     queryFn: getExcelSummary,
     retry: 1,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
   });
 
   const { providers: providersList, pagination, facets } = unwrapProviders(data);
@@ -217,6 +219,8 @@ export default function ProvidersPage() {
             </button>
             <button
               onClick={() => setActiveOuterTab("stats")}
+              onMouseEnter={() => void import("echarts-for-react")}
+              onFocus={() => void import("echarts-for-react")}
               className={cn(
                 "rounded-lg px-4 py-1.5 text-xs transition-all font-bold",
                 activeOuterTab === "stats" ? "bg-card text-white shadow-sm" : "text-muted-foreground hover:text-white",

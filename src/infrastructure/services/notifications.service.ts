@@ -18,3 +18,6 @@ export const getNotificationCampaigns = (page = 1, limit = 10, filters: Notifica
 
 export const getNotificationStats = () =>
   api.get("/notifications/admin/stats").then((response) => response.data);
+
+export const getUnreadNotificationCount = () =>
+  api.get("/notifications/unread-count").then((response) => response.data);

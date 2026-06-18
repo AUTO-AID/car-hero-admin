@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Users, Wrench, Package, Calendar,
   Settings, CreditCard, Star, Bell, Crown, ShieldCheck,
-  LogOut, Car, Wallet, Zap, X, Menu, FileText, BarChart3,
+  LogOut, Wallet, Zap, X, Menu, FileText, BarChart3,
   ChevronLeft, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -82,11 +82,15 @@ export function Sidebar({ collapsed = false, onCollapse }: SidebarProps) {
         "flex items-center h-[var(--header-height)] border-b border-border/30 shrink-0 transition-all duration-300",
         collapsed && !isMobile ? "px-4 justify-center" : "px-4 gap-3"
       )}>
-        {/* Logo mark */}
         <div className="relative flex-shrink-0">
-          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-primary/40 to-primary/15 border border-primary/25 shadow-lg shadow-primary/10">
-            <Car className="w-[17px] h-[17px] text-primary" />
-          </div>
+          <img
+            src="/logo_carHero.png"
+            alt="Car Hero"
+            className={cn(
+              "object-contain drop-shadow-[0_5px_16px_rgba(143,92,177,0.28)] transition-all duration-300",
+              collapsed && !isMobile ? "h-9 w-11" : "h-10 w-[126px]"
+            )}
+          />
           {/* Live dot */}
           <span className="absolute -top-0.5 -left-0.5 flex h-2.5 w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
@@ -96,14 +100,9 @@ export function Sidebar({ collapsed = false, onCollapse }: SidebarProps) {
 
         {(!collapsed || isMobile) && (
           <>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-bold text-[14px] text-white leading-none tracking-tight">
-                Car<span className="text-primary">Hero</span>
-              </h2>
-              <p className="text-[10px] text-muted-foreground/60 mt-0.5 font-medium tracking-wide">
-                Admin Panel
-              </p>
-            </div>
+            <p className="flex-1 min-w-0 text-[10px] text-muted-foreground/60 font-medium tracking-wide">
+              Admin Panel
+            </p>
 
             {/* Collapse toggle — desktop only */}
             {onCollapse && !isMobile && (
