@@ -30,7 +30,7 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
                 { label: "الموقع", value: (booking as any).address ?? "غير محدد", icon: MapPin },
               ].map(({ label, value, icon: Icon }) => (
                 <div key={label} className="bg-secondary/30 rounded-xl p-3 border border-border/30">
-                  <p className="text-[10px] text-muted-foreground mb-1 flex items-center gap-1"><Icon className="w-3 h-3" />{label}</p>
+                  <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1"><Icon className="w-3 h-3" />{label}</p>
                   <p className="text-xs font-semibold text-foreground">{value}</p>
                 </div>
               ))}
@@ -38,13 +38,13 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
 
             {/* Visual Step-Timeline */}
             <div className="bg-secondary/15 border border-border/25 rounded-xl p-4 space-y-3.5">
-              <p className="text-[10px] font-bold text-muted-foreground/70">حالة ومسار تتبع الطلب</p>
+              <p className="text-xs font-bold text-muted-foreground/70">حالة ومسار تتبع الطلب</p>
               
               <div className="flex items-center justify-between relative pt-2">
                 {/* Connecting Line */}
-                <div className="absolute top-[18px] right-4 left-4 h-0.5 bg-secondary/80 z-0" />
+                <div className="absolute top-[18px] start-4 end-4 h-0.5 bg-secondary/80 z-0" />
                 <div 
-                  className="absolute top-[18px] right-4 h-0.5 bg-primary transition-all duration-500 z-0" 
+                  className="absolute top-[18px] start-4 h-0.5 bg-primary transition-all duration-500 z-0" 
                   style={{ 
                     width: booking.status === "cancelled" 
                       ? "0%" 
@@ -74,9 +74,9 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
                   return (
                     <div key={step.key} className="flex flex-col items-center gap-2 relative z-10">
                       <div className={cn(
-                        "w-5.5 h-5.5 rounded-full flex items-center justify-center border text-[9px] font-bold transition-all",
+                        "w-5.5 h-5.5 rounded-full flex items-center justify-center border text-xs font-bold transition-all",
                         isCancelled && idx === 0
-                          ? "bg-rose-500/10 border-rose-500 text-rose-500 shadow-sm"
+                          ? "bg-rose-500/10 border-rose-500 text-danger shadow-sm"
                           : isDone
                             ? "bg-primary text-primary-foreground border-primary shadow-sm shadow-primary/25"
                             : "bg-background border-border/50 text-muted-foreground/60"
@@ -90,9 +90,9 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
                         )}
                       </div>
                       <span className={cn(
-                        "text-[9px] font-bold text-center",
+                        "text-xs font-bold text-center",
                         isCancelled && idx === 0
-                          ? "text-rose-400 font-extrabold"
+                          ? "text-danger font-extrabold"
                           : isDone
                             ? "text-white"
                             : "text-muted-foreground/40"
@@ -107,14 +107,14 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
 
             {booking.notes && (
               <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
-                <p className="text-[10px] text-amber-400 mb-1 font-bold">ملاحظات العميل</p>
+                <p className="text-xs text-warning mb-1 font-bold">ملاحظات العميل</p>
                 <p className="text-xs text-foreground/85 leading-relaxed">{booking.notes}</p>
               </div>
             )}
             
             <div className="flex items-center justify-between bg-secondary/20 rounded-xl p-3.5 border border-border/20">
               <span className="text-xs text-muted-foreground font-semibold">المبلغ الإجمالي للرحلة</span>
-              <span className="text-base font-black text-primary tabular-nums">
+              <span className="text-base font-bold text-primary tabular-nums">
                 {(booking.totalAmount || booking.payableAmount || 0).toLocaleString("ar-SA")} ل.س
               </span>
             </div>

@@ -1,6 +1,55 @@
 import { api } from "../api/client";
+import type { Booking } from "@/domain/entities/booking.types";
+import { cleanParams, isRecord } from "@/infrastructure/api/response";
 
-const normalizeOrder = (order: any) => ({
+export type OrderRecord = Booking & {
+  orderNumber?: string;
+  address?: string;
+  paymentStatus?: string;
+  paymentMethod?: string;
+  serviceName?: string;
+  userId?: string;
+  userName?: string;
+  providerId?: string;
+  providerName?: string;
+  serviceId?: string;
+  userLocation?: Booking["location"];
+  isScheduled?: boolean;
+  startedAt?: string;
+  completedAt?: string;
+  acceptedAt?: string;
+  userNotes?: string;
+  total?: number;
+  facets?: Record<string, unknown>;
+  cancellationReason?: string;
+  cancelledBy?: string;
+};
+
+export type OrdersPayload = {
+  orders?: OrderRecord[];
+  bookings?: OrderRecord[];
+  total?: number;
+  pagination?: {
+    total?: number;
+    page?: number;
+    limit?: number;
+    pages?: number;
+  };
+  facets?: {
+    totals?: Record<string, number>;
+    statusCounts?: Array<{ _id: string; count: number }>;
+    paymentMethods?: Array<{ _id: string; count: number }>;
+  };
+};
+
+export type OrdersResponse = {
+  data: OrdersPayload;
+  orders?: OrderRecord[];
+  bookings?: OrderRecord[];
+  total?: number;
+};
+
+const normalizeOrder = (order: Partial<OrderRecord>): OrderRecord => ({
   ...order,
   _id: order._id ?? order.id,
   id: order.id ?? order._id,
@@ -10,20 +59,21 @@ const normalizeOrder = (order: any) => ({
   payableAmount: order.payableAmount ?? order.totalAmount ?? order.total ?? 0,
   totalAmount: order.totalAmount ?? order.payableAmount ?? order.total ?? 0,
   location: order.location ?? order.userLocation,
-});
+} as OrderRecord);
 
-const normalizeOrdersResponse = (payload: any, listKey: "orders" | "bookings") => {
-  const container = payload?.data ?? payload;
-  const rows = container?.orders ?? container?.bookings ?? (Array.isArray(container) ? container : []);
+const normalizeOrdersResponse = (payload: unknown, listKey: "orders" | "bookings"): OrdersResponse => {
+  const container = isRecord(payload) && "data" in payload ? payload.data : payload;
+  const source = isRecord(container) ? container : {};
+  const rows = (source.orders ?? source.bookings ?? (Array.isArray(container) ? container : [])) as Partial<OrderRecord>[];
   const normalized = rows.map(normalizeOrder);
 
   return {
-    ...payload,
+    ...(isRecord(payload) ? payload : {}),
     data: {
-      ...(typeof container === "object" && !Array.isArray(container) ? container : {}),
+      ...(isRecord(container) ? container : {}),
       [listKey]: normalized,
-      orders: listKey === "orders" ? normalized : container?.orders,
-      pagination: container?.pagination,
+      orders: listKey === "orders" ? normalized : source.orders as OrderRecord[] | undefined,
+      pagination: source.pagination as OrdersPayload["pagination"],
     },
     [listKey]: normalized,
   };
@@ -43,11 +93,6 @@ export type OrderFilters = {
   sortOrder?: "asc" | "desc";
 };
 
-const cleanParams = (params: Record<string, unknown>) =>
-  Object.fromEntries(
-    Object.entries(params).filter(([, value]) => value !== undefined && value !== "" && value !== "all"),
-  );
-
 export const getAllBookings = (page = 1, limit = 10, status?: string, filters: OrderFilters = {}) =>
   api
     .get("/bookings", { params: cleanParams({ page, limit, status, ...filters }) })
@@ -63,6 +108,12 @@ export const getBookingById = (id: string) =>
 
 export const updateBookingStatus = (id: string, status: string) =>
   api.patch(`/orders/${id}/status`, { status }).then((r) => r.data);
+
+export const rejectOrder = (id: string, reason: string) =>
+  api.patch(`/orders/${id}/status`, { status: "rejected", reason, cancelledBy: "admin" }).then((r) => r.data);
+
+export const cancelOrder = (id: string, reason: string) =>
+  api.post(`/orders/${id}/cancel`, { reason, cancelledBy: "admin" }).then((r) => r.data);
 
 export const deleteBooking = (id: string) =>
   api.delete(`/orders/${id}`).then((r) => r.data);

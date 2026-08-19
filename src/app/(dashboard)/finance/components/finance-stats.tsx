@@ -26,7 +26,7 @@ export default function FinanceStats({
         title="رصيد المنصة المحسوب"
         value={`${balance.toLocaleString("ar-SY")} ل.س`}
         icon={Wallet}
-        iconColor="text-emerald-400"
+        iconColor="text-success"
         iconBg="from-emerald-500/15 to-emerald-500/5"
         glowClass="glow-green"
         trend={{ value: 0, label: `${transactionsCount.toLocaleString("ar-SY")} عملية`, type: "neutral" }}
@@ -35,7 +35,7 @@ export default function FinanceStats({
         title="إجمالي عمولات الطلبات"
         value={`${totalCommissions.toLocaleString("ar-SY")} ل.س`}
         icon={ArrowDownRight}
-        iconColor="text-blue-400"
+        iconColor="text-info"
         iconBg="from-blue-500/15 to-blue-500/5"
         glowClass="glow-blue"
         trend={{ value: 0, label: "من طلبات المحفظة المكتملة", type: "neutral" }}
@@ -44,7 +44,7 @@ export default function FinanceStats({
         title="مدفوعات المزودين المنفذة"
         value={`${totalPayouts.toLocaleString("ar-SY")} ل.س`}
         icon={ArrowUpRight}
-        iconColor="text-orange-400"
+        iconColor="text-warning"
         iconBg="from-orange-500/15 to-orange-500/5"
         trend={{ value: 0, label: "سحوبات مكتملة للمزودين", type: "neutral" }}
       />
@@ -52,7 +52,7 @@ export default function FinanceStats({
         title="طلبات السحب المعلقة"
         value={`${pendingPayoutsAmount.toLocaleString("ar-SY")} ل.س`}
         icon={Clock3}
-        iconColor="text-amber-400"
+        iconColor="text-warning"
         iconBg="from-amber-500/15 to-amber-500/5"
         trend={{ value: 0, label: `${payoutsCount.toLocaleString("ar-SY")} طلب بانتظار المعالجة`, type: "neutral" }}
       />

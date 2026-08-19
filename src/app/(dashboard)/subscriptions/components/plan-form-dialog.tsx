@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectDisplayValue, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
 export type MembershipPlan = {
@@ -33,6 +33,12 @@ interface Props {
 }
 
 const emptyForm = { name: "", nameAr: "", price: 0, durationDays: 30, tier: "basic", features: "", featuresAr: "", isActive: true };
+const tierLabels: Record<string, string> = {
+  basic: "أساسي",
+  silver: "فضي",
+  gold: "ذهبي",
+  platinum: "بلاتيني",
+};
 
 export default function PlanFormDialog({ open, onOpenChange, editData, onSave, isPending }: Props) {
   const [form, setForm] = useState({ ...emptyForm });
@@ -52,7 +58,7 @@ export default function PlanFormDialog({ open, onOpenChange, editData, onSave, i
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card border-border/50 rounded-xl max-w-xl" dir="rtl">
-        <DialogHeader><DialogTitle className="text-white text-sm font-bold flex items-center gap-2"><Crown className="w-4 h-4 text-primary" />{editData ? "تعديل خطة الاشتراك" : "إضافة خطة اشتراك"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="text-foreground text-sm font-bold flex items-center gap-2"><Crown className="w-4 h-4 text-primary" />{editData ? "تعديل خطة الاشتراك" : "إضافة خطة اشتراك"}</DialogTitle></DialogHeader>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="الاسم بالعربية"><Input value={form.nameAr} onChange={(e) => setForm({ ...form, nameAr: e.target.value })} /></Field>
           <Field label="الاسم بالإنجليزية"><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} dir="ltr" /></Field>
@@ -60,7 +66,7 @@ export default function PlanFormDialog({ open, onOpenChange, editData, onSave, i
           <Field label="المدة بالأيام"><Input type="number" min={1} value={form.durationDays} onChange={(e) => setForm({ ...form, durationDays: Number(e.target.value) })} dir="ltr" /></Field>
           <Field label="المستوى">
             <Select value={form.tier} onValueChange={(value) => setForm({ ...form, tier: value || "basic" })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger><SelectDisplayValue value={tierLabels[form.tier] ?? form.tier} /></SelectTrigger>
               <SelectContent><SelectItem value="basic">أساسي</SelectItem><SelectItem value="silver">فضي</SelectItem><SelectItem value="gold">ذهبي</SelectItem><SelectItem value="platinum">بلاتيني</SelectItem></SelectContent>
             </Select>
           </Field>

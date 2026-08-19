@@ -20,4 +20,8 @@ export const getNotificationStats = () =>
   api.get("/notifications/admin/stats").then((response) => response.data);
 
 export const getUnreadNotificationCount = () =>
-  api.get("/notifications/unread-count").then((response) => response.data);
+  api.get("/notifications/unread-count").then((response) => {
+    const payload = response.data?.data ?? response.data ?? {};
+    const count = Number(payload.count ?? payload.unreadCount ?? 0);
+    return { count, data: { count } };
+  });

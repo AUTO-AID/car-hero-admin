@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   approveProvider,
   getAllProviders,
+  getTopRequestedProviders,
   rejectProvider,
   updateProvider,
   type ProviderFilters,
@@ -14,18 +15,56 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, Filter, Search, SlidersHorizontal, Wrench, X } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FilterSelectValue, Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { queryKeys } from "@/infrastructure/query/query-keys";
+import { useDebouncedValue } from "@/application/hooks/use-debounced-value";
 
 import { ProvidersKpiCards } from "./components/providers-kpi-cards";
 import { ProvidersStats } from "./components/providers-stats";
 import { ProvidersTable } from "./components/providers-table";
+import { TopRequestedProviders } from "./components/top-requested-providers";
 import { ProviderAuditDialog } from "./components/provider-audit-dialog";
 import { ProviderEditDialog } from "./components/provider-edit-dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const PAGE_SIZE = 10;
+
+const accountStatusLabels: Record<string, string> = {
+  all: "كل الحسابات",
+  true: "نشط",
+  false: "موقوف",
+};
+
+const runtimeStatusLabels: Record<string, string> = {
+  all: "كل الحالات",
+  online: "متصل",
+  busy: "مشغول",
+  offline: "غير متصل",
+};
+
+const emergencyProviderLabels: Record<string, string> = {
+  all: "كل المزودين",
+  true: "طوارئ فقط",
+  false: "غير طوارئ",
+};
+
+const providerSortByLabels: Record<string, string> = {
+  createdAt: "تاريخ التسجيل",
+  businessName: "الاسم",
+  rating: "التقييم",
+  orders: "إجمالي الطلبات",
+  completedOrders: "الطلبات المكتملة",
+  revenue: "الإيراد المكتمل",
+  city: "المدينة",
+};
+
+const sortOrderLabels: Record<string, string> = {
+  desc: "تنازلي",
+  asc: "تصاعدي",
+};
 
 function unwrapProviders(payload: any) {
   const container = payload?.data ?? payload;
@@ -89,8 +128,10 @@ export default function ProvidersPage() {
   const [page, setPage] = useState(1);
   const [auditProvider, setAuditProvider] = useState<any | null>(null);
   const [editProvider, setEditProvider] = useState<any | null>(null);
+  const [providerToToggle, setProviderToToggle] = useState<any | null>(null);
   const [activeOuterTab, setActiveOuterTab] = useState("list");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 350);
   const [filters, setFilters] = useState({
     isActive: "all",
     runtimeStatus: "all",
@@ -105,21 +146,29 @@ export default function ProvidersPage() {
   const queryFilters: ProviderFilters = useMemo(
     () => ({
       status: tab,
-      search: searchQuery.trim(),
+      search: debouncedSearchQuery.trim(),
       ...filters,
     }),
-    [filters, searchQuery, tab],
+    [debouncedSearchQuery, filters, tab],
   );
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["admin-providers", queryFilters, page],
+    queryKey: queryKeys.providers.list(queryFilters, page),
     queryFn: () => getAllProviders(queryFilters, page, PAGE_SIZE),
     retry: 1,
   });
 
   const { data: excelSummary, isLoading: isSummaryLoading } = useQuery({
-    queryKey: ["admin-excel-summary"],
+    queryKey: queryKeys.providers.excelSummary,
     queryFn: getExcelSummary,
+    retry: 1,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
+
+  const { data: topRequestedProviders, isLoading: isTopRequestedLoading } = useQuery({
+    queryKey: queryKeys.providers.topRequested(100),
+    queryFn: () => getTopRequestedProviders(100),
     retry: 1,
     staleTime: 30_000,
     refetchOnWindowFocus: true,
@@ -135,8 +184,8 @@ export default function ProvidersPage() {
   const approveMutation = useMutation({
     mutationFn: approveProvider,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-providers"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-excel-summary"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.providers.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
       toast.success("تم اعتماد وتفعيل حساب مزود الخدمة بنجاح");
       setAuditProvider(null);
     },
@@ -146,8 +195,8 @@ export default function ProvidersPage() {
   const rejectMutation = useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) => rejectProvider(id, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-providers"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-excel-summary"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.providers.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
       toast.error("تم رفض طلب التسجيل وإعلام المزود بالسبب");
       setAuditProvider(null);
     },
@@ -156,13 +205,39 @@ export default function ProvidersPage() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => updateProvider(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-providers"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-excel-summary"] });
-      toast.success("تم تحديث بيانات المزود");
-      setEditProvider(null);
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.providers.all });
+      const previousProviders = queryClient.getQueryData(queryKeys.providers.list(queryFilters, page));
+      
+      queryClient.setQueryData(queryKeys.providers.list(queryFilters, page), (old: any) => {
+        if (!old) return old;
+        const newData = structuredClone(old);
+        let targetList = Array.isArray(newData?.providers) ? newData.providers :
+                         Array.isArray(newData?.data?.providers) ? newData.data.providers :
+                         Array.isArray(newData?.data) ? newData.data : newData;
+        if (Array.isArray(targetList)) {
+           const idx = targetList.findIndex((p: any) => p._id === id);
+           if (idx !== -1) {
+             targetList[idx] = { ...targetList[idx], ...data };
+           }
+        }
+        return newData;
+      });
+      return { previousProviders };
     },
-    onError: () => toast.error("تعذر تحديث بيانات المزود"),
+    onError: (err, newTodo, context) => {
+      queryClient.setQueryData(queryKeys.providers.list(queryFilters, page), context?.previousProviders);
+      toast.error("تعذر تحديث بيانات المزود");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.providers.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
+    },
+    onSuccess: () => {
+      toast.success("تم تحديث بيانات المزود بنجاح");
+      setEditProvider(null);
+      setProviderToToggle(null);
+    },
   });
 
   const updateFilter = (key: keyof typeof filters, value: string) => {
@@ -186,23 +261,16 @@ export default function ProvidersPage() {
   };
 
   const handleToggleActive = (provider: any) => {
-    const isActive = provider.isActive !== false && provider.accountStatus !== "suspended";
-    updateMutation.mutate({
-      id: provider._id,
-      data: {
-        isActive: !isActive,
-        accountStatus: isActive ? "suspended" : "active",
-      },
-    });
+    setProviderToToggle(provider);
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-secondary/15 px-5 py-4 rounded-2xl border border-border/30 backdrop-blur-md">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-secondary/15 px-4 sm:px-5 py-3 sm:py-4 rounded-2xl border border-border/30 backdrop-blur-md">
         <div className="flex flex-col md:flex-row md:items-center gap-4">
           <div>
-            <h1 className="text-lg font-black text-white tracking-tight">إدارة شؤون المزودين</h1>
-            <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+            <h1 className="text-lg font-bold text-white tracking-tight">إدارة شؤون المزودين</h1>
+            <p className="text-xs text-muted-foreground mt-0.5 font-semibold">
               مراجعة بيانات الورش والمزودين، اعتماد الطلبات، ومراقبة النشاط والطلبات الفعلية من قاعدة البيانات.
             </p>
           </div>
@@ -252,7 +320,7 @@ export default function ProvidersPage() {
             </Button>
           </div>
         ) : (
-          <span className="text-xs font-semibold text-violet-400 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20">
+          <span className="text-xs font-semibold text-info px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20">
             تحليلات مباشرة من قاعدة البيانات
           </span>
         )}
@@ -260,7 +328,7 @@ export default function ProvidersPage() {
 
       {activeOuterTab === "list" && (
         <>
-          <Card className="p-2.5 bg-card/60 backdrop-blur-xl border-border/40 flex flex-col gap-4">
+          <Card className="p-2.5 bg-card/60 backdrop-blur-xl border-border/40 flex flex-col gap-6">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <Tabs
                 value={tab}
@@ -277,7 +345,7 @@ export default function ProvidersPage() {
                   <TabsTrigger value="pending" className="flex-1 text-xs font-bold data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg gap-2">
                     قيد المراجعة
                     {pendingCount > 0 && (
-                      <span className="flex items-center justify-center h-4 min-w-4 px-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-[10px] font-bold text-amber-500 animate-pulse">
+                      <span className="flex items-center justify-center h-4 min-w-4 px-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-xs font-bold text-warning animate-pulse">
                         {pendingCount}
                       </span>
                     )}
@@ -289,25 +357,26 @@ export default function ProvidersPage() {
               </Tabs>
 
               <div className="relative w-full md:max-w-xs">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50 pointer-events-none" />
+                <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 pointer-events-none" />
                 <input
                   type="text"
+                  aria-label="بحث في المزودين"
                   placeholder="بحث بالاسم أو الهاتف أو المدينة أو الخدمة..."
                   value={searchQuery}
                   onChange={(event) => {
                     setSearchQuery(event.target.value);
                     setPage(1);
                   }}
-                  className="w-full h-11 bg-background/50 border border-border/40 rounded-xl pr-10 pl-4 text-sm text-foreground outline-none focus:border-primary/50 transition-all placeholder:text-muted-foreground/30 focus-visible:ring-1 focus-visible:ring-primary"
+                  className="w-full h-11 bg-background/50 border border-border/40 rounded-xl ps-10 pe-4 text-sm text-foreground outline-none focus:border-primary/50 transition-all placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-primary"
                 />
               </div>
             </div>
 
             {showAdvancedFilters && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-8 gap-2 border-t border-border/20 pt-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-2 border-t border-border/20 pt-3">
                 <Select value={filters.isActive} onValueChange={(value) => updateFilter("isActive", value || "all")}>
                   <SelectTrigger className="w-full h-10 bg-background/60 border-border/40 text-xs">
-                    <SelectValue placeholder="حالة الحساب" />
+                    <FilterSelectValue label="الحساب" value={accountStatusLabels[filters.isActive] ?? filters.isActive} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">كل الحسابات</SelectItem>
@@ -318,7 +387,7 @@ export default function ProvidersPage() {
 
                 <Select value={filters.runtimeStatus} onValueChange={(value) => updateFilter("runtimeStatus", value || "all")}>
                   <SelectTrigger className="w-full h-10 bg-background/60 border-border/40 text-xs">
-                    <SelectValue placeholder="حالة الاتصال" />
+                    <FilterSelectValue label="الاتصال" value={runtimeStatusLabels[filters.runtimeStatus] ?? filters.runtimeStatus} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">كل الحالات</SelectItem>
@@ -330,7 +399,7 @@ export default function ProvidersPage() {
 
                 <Select value={filters.city} onValueChange={(value) => updateFilter("city", value || "all")}>
                   <SelectTrigger className="w-full h-10 bg-background/60 border-border/40 text-xs">
-                    <SelectValue placeholder="المدينة" />
+                    <FilterSelectValue label="المدينة" value={filters.city === "all" ? "كل المدن" : filters.city} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">كل المدن</SelectItem>
@@ -344,7 +413,7 @@ export default function ProvidersPage() {
 
                 <Select value={filters.service} onValueChange={(value) => updateFilter("service", value || "all")}>
                   <SelectTrigger className="w-full h-10 bg-background/60 border-border/40 text-xs">
-                    <SelectValue placeholder="الخدمة" />
+                    <FilterSelectValue label="الخدمة" value={filters.service === "all" ? "كل الخدمات" : filters.service} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">كل الخدمات</SelectItem>
@@ -358,7 +427,7 @@ export default function ProvidersPage() {
 
                 <Select value={filters.emergency} onValueChange={(value) => updateFilter("emergency", value || "all")}>
                   <SelectTrigger className="w-full h-10 bg-background/60 border-border/40 text-xs">
-                    <SelectValue placeholder="الطوارئ" />
+                    <FilterSelectValue label="الطوارئ" value={emergencyProviderLabels[filters.emergency] ?? filters.emergency} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">كل المزودين</SelectItem>
@@ -380,7 +449,7 @@ export default function ProvidersPage() {
 
                 <Select value={filters.sortBy} onValueChange={(value) => updateFilter("sortBy", value || "createdAt")}>
                   <SelectTrigger className="w-full h-10 bg-background/60 border-border/40 text-xs">
-                    <SelectValue placeholder="الترتيب حسب" />
+                    <FilterSelectValue label="الفرز" value={providerSortByLabels[filters.sortBy] ?? filters.sortBy} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="createdAt">تاريخ التسجيل</SelectItem>
@@ -396,7 +465,7 @@ export default function ProvidersPage() {
                 <div className="flex gap-2">
                   <Select value={filters.sortOrder} onValueChange={(value) => updateFilter("sortOrder", value === "asc" ? "asc" : "desc")}>
                     <SelectTrigger className="w-full h-10 bg-background/60 border-border/40 text-xs">
-                      <SelectValue />
+                      <FilterSelectValue label="الاتجاه" value={sortOrderLabels[filters.sortOrder]} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="desc">تنازلي</SelectItem>
@@ -431,6 +500,7 @@ export default function ProvidersPage() {
       {activeOuterTab === "stats" && (
         <>
           <ProvidersKpiCards kpis={excelSummary?.KPI_DATA} isLoading={isSummaryLoading} />
+          <TopRequestedProviders data={topRequestedProviders} isLoading={isTopRequestedLoading} />
           <ProvidersStats summary={excelSummary} isLoading={isSummaryLoading} />
         </>
       )}
@@ -449,6 +519,27 @@ export default function ProvidersPage() {
         onClose={() => setEditProvider(null)}
         onSave={(id, formData) => updateMutation.mutate({ id, data: formData })}
         isPending={updateMutation.isPending}
+      />
+
+      <ConfirmDialog
+        isOpen={!!providerToToggle}
+        onClose={() => setProviderToToggle(null)}
+        onConfirm={() => {
+          if (!providerToToggle) return;
+          const isActive = providerToToggle.isActive !== false && providerToToggle.accountStatus !== "suspended";
+          updateMutation.mutate({
+            id: providerToToggle._id,
+            data: {
+              isActive: !isActive,
+              accountStatus: isActive ? "suspended" : "active",
+            },
+          });
+        }}
+        title={providerToToggle && (providerToToggle.isActive !== false && providerToToggle.accountStatus !== "suspended") ? "إيقاف حساب المزود" : "تفعيل حساب المزود"}
+        description={`هل أنت متأكد من رغبتك في ${providerToToggle && (providerToToggle.isActive !== false && providerToToggle.accountStatus !== "suspended") ? "إيقاف" : "تفعيل"} حساب المزود ${providerToToggle?.businessName}؟`}
+        confirmText={providerToToggle && (providerToToggle.isActive !== false && providerToToggle.accountStatus !== "suspended") ? "إيقاف الحساب" : "تفعيل الحساب"}
+        isDestructive={providerToToggle && (providerToToggle.isActive !== false && providerToToggle.accountStatus !== "suspended")}
+        isLoading={updateMutation.isPending}
       />
     </div>
   );

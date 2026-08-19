@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectDisplayValue, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeftRight, Calculator, Loader2, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Service } from "@/domain/entities/service.types";
+import { cn } from "@/lib/utils";
 
 interface ServiceDialogProps {
   open: boolean;
@@ -33,6 +34,12 @@ const EMPTY_FORM = {
   sortOrder: 0,
   isEmergency: false,
   isActive: true,
+};
+
+const difficultyLabels: Record<string, string> = {
+  "1.0": "منخفضة",
+  "1.3": "متوسطة",
+  "1.6": "مرتفعة",
 };
 
 export function ServiceDialog({ open, onClose, editData, onSave, isPending, categoryMeta }: ServiceDialogProps) {
@@ -101,7 +108,7 @@ export function ServiceDialog({ open, onClose, editData, onSave, isPending, cate
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent className="bg-card border-border/50 rounded-2xl max-w-2xl overflow-y-auto max-h-[85vh]" dir="rtl">
         <DialogHeader>
-          <DialogTitle className="text-white text-sm font-bold flex items-center gap-2">
+          <DialogTitle className="text-foreground text-sm font-bold flex items-center gap-2">
             <Zap className="w-4 h-4 text-primary animate-pulse" />
             {editData ? "تعديل بيانات الخدمة" : "إضافة خدمة جديدة"}
           </DialogTitle>
@@ -121,7 +128,7 @@ export function ServiceDialog({ open, onClose, editData, onSave, isPending, cate
               <Label className="text-xs text-muted-foreground font-bold">التصنيف</Label>
               <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v || "car_wash" })}>
                 <SelectTrigger className="h-9 bg-secondary/40 border-border/40 text-xs">
-                  <SelectValue />
+                  <SelectDisplayValue value={categoryMeta[form.category]?.label ?? form.category} />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border/40 rounded-xl">
                   {Object.entries(categoryMeta).map(([val, { label }]) => (
@@ -131,29 +138,22 @@ export function ServiceDialog({ open, onClose, editData, onSave, isPending, cate
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-bold">ترتيب الظهور</Label>
-              <Input type="number" value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) })} dir="ltr" className="bg-secondary/40 border-border/40 text-xs h-9" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-bold flex items-center justify-between">
-                السعر الأساسي
-                <button type="button" onClick={() => setShowEstimator(!showEstimator)} className="text-[10px] text-primary font-black flex items-center gap-1 hover:underline">
-                  <Calculator className="w-3 h-3" />
-                  مساعد التسعير
-                </button>
-              </Label>
-              <Input type="number" value={form.basePrice || ""} onChange={(e) => setForm({ ...form, basePrice: Number(e.target.value) })} dir="ltr" className="bg-secondary/40 border-border/40 text-xs h-9 font-mono" />
+              <Label className="text-xs text-muted-foreground font-bold">السعر الأساسي (ل.س)</Label>
+              <div className="flex gap-2">
+                <Input type="number" min={0} value={form.basePrice} onChange={(e) => setForm({ ...form, basePrice: Number(e.target.value) })} dir="ltr" className="flex-1 bg-secondary/40 border-border/40 text-xs h-9 font-mono" />
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowEstimator(!showEstimator)} className={cn("h-9 font-bold text-xs gap-1 border-border/40 shrink-0", showEstimator && "border-primary/50 bg-primary/10")}>
+                  <Calculator className="w-3.5 h-3.5" />
+                  حساب تقديري
+                </Button>
+              </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-bold">السعر المخفض</Label>
-              <Input type="number" value={form.discountedPrice || ""} onChange={(e) => setForm({ ...form, discountedPrice: Number(e.target.value) })} dir="ltr" className="bg-secondary/40 border-border/40 text-xs h-9 font-mono" />
+              <Label className="text-xs text-muted-foreground font-bold">المدة المقدرة (بالدقائق)</Label>
+              <Input type="number" min={1} value={form.estimatedDuration} onChange={(e) => setForm({ ...form, estimatedDuration: Number(e.target.value) })} dir="ltr" className="bg-secondary/40 border-border/40 text-xs h-9 font-mono" />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground font-bold">المدة المتوقعة بالدقائق</Label>
-              <Input type="number" value={form.estimatedDuration || ""} onChange={(e) => setForm({ ...form, estimatedDuration: Number(e.target.value) })} dir="ltr" className="bg-secondary/40 border-border/40 text-xs h-9 font-mono" />
+            <div className="flex items-center justify-between border border-border/30 bg-secondary/15 rounded-xl px-3 h-9 self-end">
+              <Label className="text-xs text-muted-foreground font-bold cursor-pointer">حالة الطوارئ (تأثير تسعير)</Label>
+              <Switch checked={form.isEmergency} onCheckedChange={(v) => setForm({ ...form, isEmergency: v })} />
             </div>
           </div>
 
@@ -161,12 +161,14 @@ export function ServiceDialog({ open, onClose, editData, onSave, isPending, cate
             <div className="border border-primary/20 bg-primary/5 rounded-xl p-3.5 space-y-3.5 animate-fade-in-up">
               <div className="flex items-center gap-2 border-b border-primary/10 pb-1.5">
                 <Calculator className="w-4 h-4 text-primary" />
-                <span className="text-xs font-bold text-white">مساعد التسعير التقديري</span>
+                <span className="text-xs font-bold text-foreground">مساعد التسعير التقديري</span>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Input type="number" value={calcFuelRate} onChange={(e) => setCalcFuelRate(Number(e.target.value))} className="h-8 text-xs bg-background/50 border-border/40 font-mono" />
                 <Select value={calcDifficulty} onValueChange={(v) => setCalcDifficulty(v || "1.0")}>
-                  <SelectTrigger className="h-8 bg-background/50 border-border/40 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-8 bg-background/50 border-border/40 text-xs">
+                    <SelectDisplayValue value={difficultyLabels[calcDifficulty] ?? calcDifficulty} />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="1.0">منخفضة</SelectItem>
                     <SelectItem value="1.3">متوسطة</SelectItem>
@@ -174,11 +176,11 @@ export function ServiceDialog({ open, onClose, editData, onSave, isPending, cate
                   </SelectContent>
                 </Select>
               </div>
-              <div className="p-2.5 rounded-lg bg-background/40 border border-border/20 text-xs font-bold text-white flex justify-between">
+              <div className="p-2.5 rounded-lg bg-background/40 border border-border/20 text-xs font-bold text-foreground flex justify-between">
                 <span>السعر المقترح</span>
                 <span className="text-primary">{recommendedPrice.toLocaleString("ar-SA")} ل.س</span>
               </div>
-              <Button type="button" size="sm" onClick={applyEstimatedPrice} className="w-full h-8 text-[11px] font-bold gap-1.5">
+              <Button type="button" size="sm" onClick={applyEstimatedPrice} className="w-full h-8 text-xs font-bold gap-1.5">
                 <ArrowLeftRight className="w-3.5 h-3.5" />
                 تطبيق السعر المقترح
               </Button>
@@ -199,15 +201,15 @@ export function ServiceDialog({ open, onClose, editData, onSave, isPending, cate
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="flex items-center justify-between bg-secondary/20 p-3 rounded-xl border border-border/30">
               <div>
-                <p className="text-xs font-medium text-foreground">خدمة طارئة</p>
-                <p className="text-[10px] text-muted-foreground">تظهر ضمن خدمات المساعدة الفورية</p>
+                <p className="text-xs font-semibold text-foreground">خدمة طارئة</p>
+                <p className="text-xs text-muted-foreground">تظهر ضمن خدمات المساعدة الفورية</p>
               </div>
               <Switch checked={form.isEmergency} onCheckedChange={(v) => setForm({ ...form, isEmergency: v })} className="data-[state=checked]:bg-rose-500 shrink-0" />
             </div>
             <div className="flex items-center justify-between bg-secondary/20 p-3 rounded-xl border border-border/30">
               <div>
-                <p className="text-xs font-medium text-foreground">الخدمة نشطة</p>
-                <p className="text-[10px] text-muted-foreground">تظهر للمستخدمين في الاختيارات</p>
+                <p className="text-xs font-semibold text-foreground">الخدمة نشطة</p>
+                <p className="text-xs text-muted-foreground">تظهر للمستخدمين في الاختيارات</p>
               </div>
               <Switch checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} className="data-[state=checked]:bg-emerald-500 shrink-0" />
             </div>
@@ -216,7 +218,7 @@ export function ServiceDialog({ open, onClose, editData, onSave, isPending, cate
 
         <DialogFooter className="gap-2 mt-2 pt-2 border-t border-border/25">
           <Button variant="outline" size="sm" onClick={onClose} disabled={isPending} className="border-border/40 font-bold">إلغاء</Button>
-          <Button size="sm" onClick={handleSave} disabled={isPending} className="bg-primary hover:bg-primary/90 text-white font-bold shadow-md shadow-primary/25 min-w-[120px] gap-2">
+          <Button size="sm" onClick={handleSave} disabled={isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md shadow-primary/25 min-w-[120px] gap-2">
             {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
             {editData ? "حفظ التغييرات" : "إضافة الخدمة"}
           </Button>

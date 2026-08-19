@@ -78,12 +78,12 @@ export function ProviderAuditDialog({
   return (
     <Dialog open={auditProvider !== null} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-5xl bg-card border-border/40 rounded-2xl overflow-hidden shadow-2xl p-0">
-        <DialogHeader className="p-6 pb-4 border-b border-border/20 bg-secondary/10 text-right">
-          <DialogTitle className="text-lg font-black text-white flex items-center gap-2">
+        <DialogHeader className="p-6 pb-4 border-b border-border/20 bg-secondary/10 text-start">
+          <DialogTitle className="text-lg font-bold text-white flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-primary" />
             تدقيق ومراجعة ملف تسجيل: {auditProvider?.businessName}
           </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground font-medium mt-1">
+          <DialogDescription className="text-xs text-muted-foreground font-semibold mt-1">
             قم بمطابقة المستندات المرفقة مع بيانات المسؤول للموافقة على التفعيل أو الرفض
           </DialogDescription>
         </DialogHeader>
@@ -107,7 +107,7 @@ export function ProviderAuditDialog({
                         key={idx}
                         onClick={() => { setSelectedDocIdx(idx); setZoom(100); setRotation(0); }}
                         className={cn(
-                          "px-2.5 py-1 text-[10px] font-bold rounded-md transition-all",
+                          "px-2.5 py-1 text-xs font-bold rounded-md transition-all",
                           selectedDocIdx === idx
                             ? "bg-primary text-primary-foreground"
                             : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
@@ -135,7 +135,7 @@ export function ProviderAuditDialog({
                     />
 
                     {/* Zoom/Rotate Floating controls */}
-                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 p-1.5 rounded-xl bg-background/90 border border-border/40 backdrop-blur-md opacity-70 group-hover/viewer:opacity-100 transition-opacity duration-300">
+                    <div className="absolute bottom-3 end-1/2 -translate-x-1/2 flex items-center gap-2 p-1.5 rounded-xl bg-background/90 border border-border/40 backdrop-blur-md opacity-70 group-hover/viewer:opacity-100 transition-opacity duration-300">
                       <button
                         onClick={() => setZoom(z => Math.min(250, z + 20))}
                         className="p-1 rounded-lg text-muted-foreground hover:text-white hover:bg-secondary/60"
@@ -169,9 +169,9 @@ export function ProviderAuditDialog({
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center text-muted-foreground gap-2 p-8">
-                    <AlertTriangle className="w-8 h-8 text-amber-500/80 animate-bounce" />
+                    <AlertTriangle className="w-8 h-8 text-warning/80 animate-bounce" />
                     <p className="text-xs font-bold text-foreground">لم يتم رفع وثائق توثيق حتى الآن</p>
-                    <p className="text-[10px] text-muted-foreground/60 text-center max-w-[240px]">
+                    <p className="text-xs text-muted-foreground/60 text-center max-w-[240px]">
                       يمكنك التواصل مع مزود الخدمة هاتفياً لإرشاده لرفع الأوراق من صفحة الإعدادات.
                     </p>
                   </div>
@@ -188,36 +188,36 @@ export function ProviderAuditDialog({
                 
                 <div className="p-3.5 rounded-xl border border-border/25 bg-secondary/5 space-y-3.5">
                   <div>
-                    <span className="text-[10px] text-muted-foreground font-semibold">اسم النشاط التجاري (الورشة)</span>
+                    <span className="text-xs text-muted-foreground font-semibold">اسم النشاط التجاري (الورشة)</span>
                     <p className="text-xs font-bold text-white mt-0.5">{auditProvider.businessName}</p>
                   </div>
                   <div>
-                    <span className="text-[10px] text-muted-foreground font-semibold">المالك المسؤول</span>
+                    <span className="text-xs text-muted-foreground font-semibold">المالك المسؤول</span>
                     <p className="text-xs font-bold text-white mt-0.5">{auditProvider.ownerName}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <span className="text-[10px] text-muted-foreground font-semibold">المحافظة / المدينة</span>
+                      <span className="text-xs text-muted-foreground font-semibold">المحافظة / المدينة</span>
                       <p className="text-xs font-bold text-white mt-0.5">{auditProvider.city}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] text-muted-foreground font-semibold">رقم الجوال</span>
+                      <span className="text-xs text-muted-foreground font-semibold">رقم الجوال</span>
                       <p className="text-xs font-bold text-white font-mono mt-0.5" dir="ltr">{auditProvider.phone}</p>
                     </div>
                   </div>
                   {auditProvider.address && (
                     <div>
-                      <span className="text-[10px] text-muted-foreground font-semibold">العنوان التفصيلي</span>
-                      <p className="text-xs font-medium text-muted-foreground mt-0.5">{auditProvider.address}</p>
+                      <span className="text-xs text-muted-foreground font-semibold">العنوان التفصيلي</span>
+                      <p className="text-xs font-semibold text-muted-foreground mt-0.5">{auditProvider.address}</p>
                     </div>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <span className="text-[10px] text-muted-foreground font-bold">الخدمات الأساسية المدخلة</span>
+                  <span className="text-xs text-muted-foreground font-bold">الخدمات الأساسية المدخلة</span>
                   <div className="flex flex-wrap gap-1.5">
                     {auditProvider.serviceCategories?.map((cat: string) => (
-                      <Badge key={cat} variant="outline" className="bg-secondary/40 text-foreground border-border/30 text-[10px] font-bold">
+                      <Badge key={cat} variant="outline" className="bg-secondary/40 text-foreground border-border/30 text-xs font-bold">
                         {categoryLabels[cat] || cat}
                       </Badge>
                     ))}
@@ -230,10 +230,10 @@ export function ProviderAuditDialog({
                 {showRejectForm ? (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-rose-400">حدد سبب الرفض وإخطار المزود</label>
+                      <label className="text-xs font-bold text-danger">حدد سبب الرفض وإخطار المزود</label>
                       <button 
                         onClick={() => setShowRejectForm(false)}
-                        className="text-[10px] font-bold text-muted-foreground hover:text-white"
+                        className="text-xs font-bold text-muted-foreground hover:text-white"
                       >
                         تراجع
                       </button>
@@ -247,9 +247,9 @@ export function ProviderAuditDialog({
                           type="button"
                           onClick={() => setRejectionReason(r)}
                           className={cn(
-                            "text-right text-[10.5px] p-2 rounded-lg border text-muted-foreground transition-all",
+                            "text-start text-xs p-2 rounded-lg border text-muted-foreground transition-all",
                             rejectionReason === r 
-                              ? "bg-rose-500/10 border-rose-500/40 text-rose-400 font-bold"
+                              ? "bg-rose-500/10 border-rose-500/40 text-danger font-bold"
                               : "bg-secondary/20 border-border/20 hover:bg-secondary/40 hover:text-foreground"
                           )}
                         >
@@ -297,7 +297,7 @@ export function ProviderAuditDialog({
                         </Button>
                         <Button
                           onClick={() => setShowRejectForm(true)}
-                          className="bg-rose-500/15 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/30 hover:border-transparent font-bold h-11 px-4 rounded-xl transition-all"
+                          className="bg-rose-500/15 hover:bg-rose-500 text-danger hover:text-white border border-rose-500/30 hover:border-transparent font-bold h-11 px-4 rounded-xl transition-all"
                         >
                           رفض الطلب
                         </Button>
@@ -305,13 +305,13 @@ export function ProviderAuditDialog({
                     )}
 
                     {auditProvider.registrationStatus === "approved" && (
-                      <div className="w-full p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-emerald-400 text-center text-xs font-bold">
+                      <div className="w-full p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-success text-center text-xs font-bold">
                         هذا الحساب معتمد ونشط مسبقاً ✓
                       </div>
                     )}
 
                     {auditProvider.registrationStatus === "rejected" && (
-                      <div className="w-full p-3 rounded-xl border border-rose-500/20 bg-rose-500/5 text-rose-400 text-center text-xs font-bold">
+                      <div className="w-full p-3 rounded-xl border border-rose-500/20 bg-rose-500/5 text-danger text-center text-xs font-bold">
                         هذا الطلب تم رفضه مسبقاً من قبل الإدارة
                       </div>
                     )}

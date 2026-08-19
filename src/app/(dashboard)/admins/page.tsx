@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FilterSelectValue, Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import {
   createAdmin, deleteAdmin, listAdmins, resetAdminPassword,
   toggleAdminStatus, updateAdminPermissions,
@@ -28,10 +28,23 @@ export const permissionLabels: Record<string, string> = {
   "analytics.read": "التحليلات",
   "audit.read": "سجل النشاطات",
   "finance.read": "المالية",
+  "finance.update": "تعديل المالية",
+  "notifications.read": "عرض الإشعارات",
+  "notifications.create": "إرسال الإشعارات",
+  "orders.read": "عرض الطلبات",
+  "orders.update": "تعديل الطلبات",
+  "orders.cancel": "إلغاء الطلبات",
+  "orders.delete": "حذف الطلبات",
+  "bookings.read": "عرض الحجوزات",
+  "bookings.update": "تعديل الحجوزات",
+  "bookings.cancel": "إلغاء الحجوزات",
   "providers.read": "عرض المزودين",
   "providers.approve": "اعتماد المزودين",
   "providers.reject": "رفض المزودين",
   "providers.update": "تعديل المزودين",
+  "reviews.read": "عرض التقييمات",
+  "reviews.update": "تعديل التقييمات",
+  "reviews.delete": "حذف التقييمات",
   "users.read": "عرض العملاء",
   "users.update": "تعديل العملاء",
   "users.status": "حالة العملاء",
@@ -49,6 +62,11 @@ export const permissionLabels: Record<string, string> = {
 };
 
 const ALL_PERMISSIONS = Object.keys(permissionLabels);
+const adminStatusLabels: Record<string, string> = {
+  all: "كل الحالات",
+  active: "نشط",
+  inactive: "معطل",
+};
 const errorMessage = (error: any, fallback: string) => error?.response?.data?.message ?? fallback;
 
 export default function AdminsPage() {
@@ -124,16 +142,16 @@ export default function AdminsPage() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
           ["إجمالي المسؤولين", stats.total, "text-primary"],
-          ["حسابات نشطة", stats.active, "text-emerald-400"],
-          ["حسابات معطلة", stats.inactive, "text-rose-400"],
-          ["مديرو الفريق", stats.managers, "text-amber-400"],
-        ].map(([label, value, color]) => <Card key={String(label)} className="p-4 text-center"><p className={`text-2xl font-bold ${color}`}>{value}</p><p className="mt-1 text-[11px] text-muted-foreground">{label}</p></Card>)}
+          ["حسابات نشطة", stats.active, "text-success"],
+          ["حسابات معطلة", stats.inactive, "text-danger"],
+          ["مديرو الفريق", stats.managers, "text-warning"],
+        ].map(([label, value, color]) => <Card key={String(label)} className="p-4 text-center"><p className={`text-2xl font-bold ${color}`}>{value}</p><p className="mt-1 text-xs text-muted-foreground">{label}</p></Card>)}
       </div>
 
       <div className="flex flex-col gap-2 border-y border-border/20 bg-secondary/5 p-3 sm:flex-row">
-        <div className="relative flex-1"><Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="بحث بالاسم أو البريد الإلكتروني" className="pr-9" /></div>
-        <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}><SelectTrigger className="sm:w-40"><SlidersHorizontal className="h-3.5 w-3.5" /><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">كل الحالات</SelectItem><SelectItem value="active">نشط</SelectItem><SelectItem value="inactive">معطل</SelectItem></SelectContent></Select>
-        <Select value={permission} onValueChange={(value) => setPermission(value ?? "all")}><SelectTrigger className="sm:w-48"><SelectValue placeholder="كل الصلاحيات" /></SelectTrigger><SelectContent><SelectItem value="all">كل الصلاحيات</SelectItem>{ALL_PERMISSIONS.map((item) => <SelectItem value={item} key={item}>{permissionLabels[item]}</SelectItem>)}</SelectContent></Select>
+        <div className="relative flex-1"><Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="بحث بالاسم أو البريد الإلكتروني" className="ps-9" /></div>
+        <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}><SelectTrigger className="sm:w-44"><FilterSelectValue label="الحالة" value={adminStatusLabels[status]} icon={<SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />} /></SelectTrigger><SelectContent><SelectItem value="all">كل الحالات</SelectItem><SelectItem value="active">نشط</SelectItem><SelectItem value="inactive">معطل</SelectItem></SelectContent></Select>
+        <Select value={permission} onValueChange={(value) => setPermission(value ?? "all")}><SelectTrigger className="sm:w-64"><FilterSelectValue label="الصلاحية" value={permission === "all" ? "كل الصلاحيات" : permissionLabels[permission] ?? permission} /></SelectTrigger><SelectContent><SelectItem value="all">كل الصلاحيات</SelectItem>{ALL_PERMISSIONS.map((item) => <SelectItem value={item} key={item}>{permissionLabels[item]}</SelectItem>)}</SelectContent></Select>
       </div>
 
       <AdminsTable admins={admins} isLoading={isLoading} isError={isError} currentAdminId={currentAdminId} canUpdate={canUpdate} canDelete={canDelete} permissionLabels={permissionLabels} onEdit={(row) => { setEditData(row); setModalOpen(true); }} onPassword={setPasswordAdmin} onDeleteClick={setDeleteId} onToggleStatus={(id, isActive) => toggleMut.mutate({ id, isActive })} />
@@ -145,5 +163,5 @@ export default function AdminsPage() {
 }
 
 function AccessDenied() {
-  return <div className="flex min-h-[400px] flex-col items-center justify-center text-center" dir="rtl"><AlertCircle className="mb-3 h-8 w-8 text-rose-400" /><h3 className="font-bold text-white">صلاحية غير كافية</h3><p className="mt-1 text-sm text-muted-foreground">تحتاج إلى صلاحية عرض المسؤولين للوصول إلى هذه الصفحة.</p></div>;
+  return <div className="flex min-h-[400px] flex-col items-center justify-center text-center" dir="rtl"><AlertCircle className="mb-3 h-8 w-8 text-danger" /><h3 className="font-bold text-white">صلاحية غير كافية</h3><p className="mt-1 text-sm text-muted-foreground">تحتاج إلى صلاحية عرض المسؤولين للوصول إلى هذه الصفحة.</p></div>;
 }

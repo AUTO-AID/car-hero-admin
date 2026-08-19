@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectDisplayValue, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
@@ -33,6 +33,18 @@ const initialForm = {
   experienceYears: 0,
   techCount: 0,
   commissionRate: 10,
+};
+
+const providerRuntimeLabels: Record<string, string> = {
+  online: "متصل",
+  busy: "مشغول",
+  offline: "غير متصل",
+};
+
+const providerAccountLabels: Record<string, string> = {
+  active: "نشط",
+  suspended: "موقوف",
+  pending: "بانتظار المراجعة",
 };
 
 export function ProviderEditDialog({ provider, onClose, onSave, isPending }: ProviderEditDialogProps) {
@@ -80,7 +92,7 @@ export function ProviderEditDialog({ provider, onClose, onSave, isPending }: Pro
     <Dialog open={Boolean(provider)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="bg-card border-border/50 rounded-2xl max-w-2xl max-h-[85vh] overflow-y-auto" dir="rtl">
         <DialogHeader>
-          <DialogTitle className="text-base font-black text-white">تعديل ملف المزود</DialogTitle>
+          <DialogTitle className="text-base font-bold text-white">تعديل ملف المزود</DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -112,7 +124,7 @@ export function ProviderEditDialog({ provider, onClose, onSave, isPending }: Pro
             <Label className="text-xs">حالة الاتصال</Label>
             <Select value={form.status} onValueChange={(value) => updateField("status", value)}>
               <SelectTrigger className="w-full h-10 bg-background/60 border-border/40">
-                <SelectValue />
+                <SelectDisplayValue value={providerRuntimeLabels[form.status] ?? form.status} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="online">متصل</SelectItem>
@@ -125,7 +137,7 @@ export function ProviderEditDialog({ provider, onClose, onSave, isPending }: Pro
             <Label className="text-xs">حالة الحساب</Label>
             <Select value={form.accountStatus} onValueChange={(value) => updateField("accountStatus", value)}>
               <SelectTrigger className="w-full h-10 bg-background/60 border-border/40">
-                <SelectValue />
+                <SelectDisplayValue value={providerAccountLabels[form.accountStatus] ?? form.accountStatus} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="active">نشط</SelectItem>

@@ -11,8 +11,8 @@ export interface Transaction {
   type: "deposit" | "withdraw" | "booking_payment" | "commission" | "payout" | string;
   status: "pending" | "completed" | "rejected" | string;
   userType?: "user" | "provider" | string;
-  userId?: string | any;
-  providerId?: string | any;
+  userId?: string | { _id?: string; id?: string; fullName?: string };
+  providerId?: string | { _id?: string; id?: string; businessName?: string };
   bankAccount?: string;
   note?: string;
   createdAt?: string;

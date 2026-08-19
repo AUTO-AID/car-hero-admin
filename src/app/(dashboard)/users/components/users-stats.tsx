@@ -16,7 +16,7 @@ export default function UsersStats({ total, premiumCount, activeCount }: UsersSt
         title="إجمالي العملاء" 
         value={total.toLocaleString("ar-SA")} 
         icon={Users}
-        iconColor="text-blue-400" 
+        iconColor="text-info" 
         iconBg="from-blue-500/15 to-blue-500/5" 
         glowClass="glow-blue" 
       />
@@ -24,7 +24,7 @@ export default function UsersStats({ total, premiumCount, activeCount }: UsersSt
         title="مشتركو Premium" 
         value={premiumCount.toLocaleString("ar-SA")}
         icon={Crown} 
-        iconColor="text-amber-400" 
+        iconColor="text-warning" 
         iconBg="from-amber-500/15 to-amber-500/5" 
         glowClass="glow-amber"
         trend={{
@@ -36,7 +36,7 @@ export default function UsersStats({ total, premiumCount, activeCount }: UsersSt
         title="حسابات فعالة" 
         value={activeCount.toLocaleString("ar-SA")}
         icon={Shield} 
-        iconColor="text-emerald-400" 
+        iconColor="text-success" 
         iconBg="from-emerald-500/15 to-emerald-500/5" 
         glowClass="glow-green" 
       />

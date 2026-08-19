@@ -15,7 +15,7 @@ export interface Service {
   ordersCount?: number;
   ordersRevenue?: number;
   completedOrdersCount?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;

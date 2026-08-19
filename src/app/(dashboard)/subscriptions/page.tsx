@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FilterSelectValue, Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createMembershipPlan, deleteMembershipPlan, getAllMembershipPlans, getMembershipStats, getMembershipSubscribers, updateMembershipPlan } from "@/infrastructure/services/subscriptions.service";
 import PlanDeleteDialog from "./components/plan-delete-dialog";
@@ -17,6 +17,13 @@ import SubscribersTable from "./components/subscribers-table";
 import SubscriptionAnalytics from "./components/subscription-analytics";
 
 const emptyFilters = { search: "", status: "all", plan: "all", dateFrom: "", dateTo: "", sortBy: "createdAt", sortOrder: "desc" as "asc" | "desc" };
+const subscriberStatusLabels: Record<string, string> = {
+  all: "كل الحالات",
+  active: "نشط",
+  expired: "منتهي",
+  cancelled: "ملغي",
+  pending: "معلق",
+};
 const body = (value: any) => value?.data?.data ?? value?.data ?? value ?? {};
 const lines = (value: string) => value.split("\n").map((item) => item.trim()).filter(Boolean);
 
@@ -47,14 +54,14 @@ export default function SubscriptionsPage() {
   return <div className="space-y-5" dir="rtl">
     <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between"><div><h2 className="text-lg font-bold">إدارة الاشتراكات</h2><p className="text-xs text-muted-foreground">خطط الاشتراك، المشتركين، الإيرادات وحالات التجديد.</p></div><Button className="gap-2" onClick={() => { setEditData(null); setFormOpen(true); }}><Plus className="w-4 h-4" />خطة جديدة</Button></div>
     <SubscriptionAnalytics stats={body(statsQuery.data)} />
-    <Tabs value={tab} onValueChange={setTab}><TabsList><TabsTrigger value="overview"><Package className="w-3.5 h-3.5 ml-1" />الخطط</TabsTrigger><TabsTrigger value="subscribers"><Users className="w-3.5 h-3.5 ml-1" />المشتركون</TabsTrigger></TabsList>
+    <Tabs value={tab} onValueChange={setTab}><TabsList><TabsTrigger value="overview"><Package className="w-3.5 h-3.5 me-1" />الخطط</TabsTrigger><TabsTrigger value="subscribers"><Users className="w-3.5 h-3.5 me-1" />المشتركون</TabsTrigger></TabsList>
       <TabsContent value="overview"><PlansList plans={plans} isLoading={plansQuery.isLoading} onEdit={(plan) => { setEditData(plan); setFormOpen(true); }} onDeleteClick={setDeleteId} /></TabsContent>
       <TabsContent value="subscribers" className="space-y-3">
-        <Card className="p-3 grid gap-2 md:grid-cols-4 xl:grid-cols-8 bg-card border-border/40">
-          <div className="relative md:col-span-2"><Search className="absolute right-3 top-2.5 w-3.5 h-3.5 text-muted-foreground" /><Input value={filters.search} onChange={(e) => setFilter("search", e.target.value)} placeholder="بحث بالاسم، الهاتف أو الخطة..." className="pr-9" /></div>
-          <Select value={filters.status} onValueChange={(v) => setFilter("status", v || "all")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">كل الحالات</SelectItem><SelectItem value="active">نشط</SelectItem><SelectItem value="expired">منتهي</SelectItem><SelectItem value="cancelled">ملغي</SelectItem><SelectItem value="pending">معلق</SelectItem></SelectContent></Select>
-          <Select value={filters.plan} onValueChange={(v) => setFilter("plan", v || "all")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">كل الخطط</SelectItem>{plans.map((plan) => <SelectItem key={plan._id} value={plan._id}>{plan.nameAr}</SelectItem>)}</SelectContent></Select>
-          <Input type="date" value={filters.dateFrom} onChange={(e) => setFilter("dateFrom", e.target.value)} /><Input type="date" value={filters.dateTo} onChange={(e) => setFilter("dateTo", e.target.value)} />
+        <Card className="p-3 grid gap-6 md:grid-cols-4 xl:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] bg-card border-border/40">
+          <div className="relative md:col-span-2"><Search className="absolute start-3 top-2.5 w-3.5 h-3.5 text-muted-foreground" /><Input value={filters.search} onChange={(e) => setFilter("search", e.target.value)} placeholder="بحث بالاسم، الهاتف أو الخطة..." className="ps-9" /></div>
+          <Select value={filters.status} onValueChange={(v) => setFilter("status", v || "all")}><SelectTrigger><FilterSelectValue label="الحالة" value={subscriberStatusLabels[filters.status] ?? filters.status} /></SelectTrigger><SelectContent><SelectItem value="all">كل الحالات</SelectItem><SelectItem value="active">نشط</SelectItem><SelectItem value="expired">منتهي</SelectItem><SelectItem value="cancelled">ملغي</SelectItem><SelectItem value="pending">معلق</SelectItem></SelectContent></Select>
+          <Select value={filters.plan} onValueChange={(v) => setFilter("plan", v || "all")}><SelectTrigger><FilterSelectValue label="الخطة" value={filters.plan === "all" ? "كل الخطط" : plans.find((plan) => plan._id === filters.plan)?.nameAr ?? filters.plan} /></SelectTrigger><SelectContent><SelectItem value="all">كل الخطط</SelectItem>{plans.map((plan) => <SelectItem key={plan._id} value={plan._id}>{plan.nameAr}</SelectItem>)}</SelectContent></Select>
+          <Input type="date" aria-label="من تاريخ" value={filters.dateFrom} onChange={(e) => setFilter("dateFrom", e.target.value)} /><Input type="date" aria-label="إلى تاريخ" value={filters.dateTo} onChange={(e) => setFilter("dateTo", e.target.value)} />
           <Button variant="outline" className="gap-1" onClick={() => { setFilters(emptyFilters); setPage(1); }}><RotateCcw className="w-3.5 h-3.5" />مسح</Button><Button variant="outline" className="gap-1" disabled={!subscribers.length} onClick={exportCsv}><Download className="w-3.5 h-3.5" />تصدير</Button>
         </Card>
         <SubscribersTable subscribers={subscribers} isLoading={subscribersQuery.isLoading} total={pagination.total} page={page} pages={pagination.pages} setPage={setPage} />

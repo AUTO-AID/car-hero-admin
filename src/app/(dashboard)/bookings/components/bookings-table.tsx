@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FilterSelectValue, Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Calendar, Search, Filter, MoreHorizontal, Eye, Trash2, User, Wrench, CalendarCheck, CalendarX, Clock, CheckCircle2, AlertCircle, XCircle } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { ar } from "date-fns/locale";
 import { Booking } from "@/domain/entities/booking.types";
+import { EmptyState } from "@/components/ui/empty-state";
+import { TablePagination } from "@/components/ui/table-pagination";
 
 interface BookingsTableProps {
   bookings: Booking[];
@@ -31,11 +33,14 @@ interface BookingsTableProps {
 const statusOptions = [
   { value: "all", label: "كل الحالات" },
   { value: "pending", label: "قيد الانتظار" },
-  { value: "confirmed", label: "مؤكّد" },
+  { value: "accepted", label: "مؤكّد" },
   { value: "in_progress", label: "جاري" },
   { value: "completed", label: "مكتمل" },
   { value: "cancelled", label: "ملغي" },
 ];
+
+const statusLabel = (value: string) =>
+  statusOptions.find((option) => option.value === value)?.label ?? value;
 
 export function BookingsTable({
   bookings,
@@ -64,29 +69,32 @@ export function BookingsTable({
     <Card className="bg-card border-border/40 overflow-hidden">
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row items-center gap-3 p-5 border-b border-border/30 bg-secondary/10">
-        <div className="flex items-center gap-2 w-full sm:w-auto mr-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto ms-auto">
           <div className="p-1.5 rounded-lg bg-primary/10 border border-primary/20">
             <Calendar className="w-4 h-4 text-primary" />
           </div>
           <h2 className="font-semibold text-white text-sm tracking-tight">إدارة الحجوزات</h2>
-          <Badge variant="outline" className="bg-secondary/50 text-muted-foreground border-border/40 text-[10px] tabular-nums">
+          <Badge variant="outline" className="bg-secondary/50 text-muted-foreground border-border/40 text-xs tabular-nums">
             {total} حجز
           </Badge>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-60">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50 pointer-events-none" />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50 pointer-events-none" />
             <Input
               placeholder="رقم الحجز، العميل، الخدمة..."
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="bg-background border-border/40 text-xs h-9 pr-9 rounded-lg"
+              className="bg-background border-border/40 text-xs h-9 ps-9 rounded-lg"
             />
           </div>
           <Select value={statusFilter} onValueChange={(val) => onStatusFilterChange(val || "all")}>
-            <SelectTrigger className="w-36 h-9 bg-background border-border/40 text-xs rounded-lg">
-              <Filter className="w-3 h-3 text-muted-foreground" />
-              <SelectValue />
+            <SelectTrigger className="w-full sm:w-48 h-9 bg-background border-border/40 text-xs rounded-lg">
+              <FilterSelectValue
+                label="الحالة"
+                value={statusLabel(statusFilter)}
+                icon={<Filter className="w-3 h-3 text-muted-foreground" />}
+              />
             </SelectTrigger>
             <SelectContent className="bg-popover border-border/40 rounded-xl">
               {statusOptions.map(({ value, label }) => (
@@ -98,12 +106,12 @@ export function BookingsTable({
       </div>
 
       {/* Table Body */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-right">
+      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="قائمة الحجوزات">
+        <table className="w-full text-start"><caption className="sr-only">قائمة الحجوزات</caption>
           <thead>
             <tr className="border-b border-border/20 bg-secondary/10">
               {["الحجز", "العميل", "المزود", "الخدمة", "الموعد", "الحالة", "المبلغ", ""].map((h) => (
-                <th key={h} className="px-5 py-3.5 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider whitespace-nowrap">
+                <th scope="col" key={h} className="text-start px-5 py-3.5 text-xs font-bold text-muted-foreground/60 uppercase tracking-wider whitespace-nowrap">
                   {h}
                 </th>
               ))}
@@ -121,10 +129,12 @@ export function BookingsTable({
               : filtered.length === 0
               ? (
                 <tr>
-                  <td colSpan={8} className="px-5 py-14 text-center">
-                    <Calendar className="w-10 h-10 text-muted-foreground/25 mx-auto mb-3" />
-                    <p className="text-sm font-medium text-muted-foreground">لا توجد حجوزات مطابقة</p>
-                    <p className="text-xs text-muted-foreground/50 mt-1">جرّب تغيير معايير البحث أو الفلتر</p>
+                  <td colSpan={8} className="px-5 py-14">
+                    <EmptyState
+                      icon={Calendar}
+                      title="لا توجد حجوزات مطابقة"
+                      description="جرّب تغيير معايير البحث أو الفلتر"
+                    />
                   </td>
                 </tr>
               )
@@ -137,9 +147,9 @@ export function BookingsTable({
                   return (
                     <tr key={bookingId} className="table-row-hover transition-colors animate-fade-in" style={{ animationDelay: `${i * 25}ms` }}>
                       <td className="px-5 py-3.5">
-                        <p className="text-[13px] font-mono font-bold text-foreground">{booking.bookingNumber}</p>
+                        <p className="text-sm font-mono font-bold text-foreground">{booking.bookingNumber}</p>
                         {booking.notes && (
-                          <p className="text-[10px] text-amber-400/80 mt-0.5 truncate max-w-[110px]" title={booking.notes}>
+                          <p className="text-xs text-warning/80 mt-0.5 truncate max-w-[110px]" title={booking.notes}>
                             ملاحظة: {booking.notes}
                           </p>
                         )}
@@ -149,7 +159,7 @@ export function BookingsTable({
                           <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center shrink-0">
                             <User className="w-3 h-3 text-muted-foreground" />
                           </div>
-                          <span className="text-xs font-medium text-foreground">{booking.user?.fullName}</span>
+                          <span className="text-xs font-semibold text-foreground">{booking.user?.fullName}</span>
                         </div>
                       </td>
                       <td className="px-5 py-3.5">
@@ -158,37 +168,37 @@ export function BookingsTable({
                             <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
                               <Wrench className="w-3 h-3 text-primary" />
                             </div>
-                            <span className="text-xs font-medium text-foreground">{booking.provider.businessName}</span>
+                            <span className="text-xs font-semibold text-foreground">{booking.provider.businessName}</span>
                           </div>
                         ) : (
                           <span className="text-xs text-muted-foreground/40 px-2">—</span>
                         )}
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="text-xs font-medium text-foreground bg-secondary/50 px-2 py-1 rounded-md border border-border/30">
+                        <span className="text-xs font-semibold text-foreground bg-secondary/50 px-2 py-1 rounded-md border border-border/30">
                           {booking.service?.name}
                         </span>
                       </td>
                       <td className="px-5 py-3.5">
                         <div className="flex flex-col gap-0.5">
-                          <div className="flex items-center gap-1.5 text-xs text-foreground font-medium">
+                          <div className="flex items-center gap-1.5 text-xs text-foreground font-semibold">
                             <CalendarCheck className="w-3 h-3 text-primary shrink-0" />
                             {format(scheduleDate, "dd MMM", { locale: ar })}
                           </div>
-                          <span className="text-[10px] text-muted-foreground/60">
+                          <span className="text-xs text-muted-foreground/60">
                             {format(scheduleDate, "hh:mm a")}
                           </span>
                         </div>
                       </td>
                       <td className="px-5 py-3.5">
-                        <div className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-lg border ${meta.color}`}>
+                        <div className={`inline-flex items-center gap-1.5 text-xs font-bold px-2 py-1 rounded-lg border ${meta.color}`}>
                           <StatusIcon className="w-3 h-3" />
                           {meta.label}
                         </div>
                       </td>
                       <td className="px-5 py-3.5">
                         <span className="text-xs font-bold text-foreground tabular-nums">
-                          {(booking.totalAmount || booking.payableAmount || 0).toLocaleString("ar-SA")} <span className="text-[10px] text-muted-foreground font-normal">ل.س</span>
+                          {(booking.totalAmount || booking.payableAmount || 0).toLocaleString("ar-SA")} <span className="text-xs text-muted-foreground font-normal">ل.س</span>
                         </span>
                       </td>
                       <td className="px-5 py-3.5">
@@ -203,13 +213,13 @@ export function BookingsTable({
                               <Eye className="w-3.5 h-3.5" /> عرض التفاصيل
                             </DropdownMenuItem>
                             {booking.status === "pending" && (
-                              <DropdownMenuItem className="gap-2 text-xs cursor-pointer text-emerald-400 focus:text-emerald-400"
-                                onClick={() => onUpdateStatus(bookingId, "confirmed")}>
+                              <DropdownMenuItem className="gap-2 text-xs cursor-pointer text-success focus:text-success"
+                                onClick={() => onUpdateStatus(bookingId, "accepted")}>
                                 <CheckCircle2 className="w-3.5 h-3.5" /> تأكيد الحجز
                               </DropdownMenuItem>
                             )}
-                            {(booking.status === "pending" || booking.status === "confirmed") && (
-                              <DropdownMenuItem className="gap-2 text-xs cursor-pointer text-rose-400 focus:text-rose-400"
+                            {(booking.status === "pending" || booking.status === "accepted") && (
+                              <DropdownMenuItem className="gap-2 text-xs cursor-pointer text-danger focus:text-danger"
                                 onClick={() => onUpdateStatus(bookingId, "cancelled")}>
                                 <XCircle className="w-3.5 h-3.5" /> إلغاء الحجز
                               </DropdownMenuItem>
@@ -229,19 +239,17 @@ export function BookingsTable({
         </table>
       </div>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-between px-5 py-3 border-t border-border/20 bg-secondary/10">
-        <p className="text-[11px] text-muted-foreground/60">
-          إجمالي <span className="font-bold text-foreground">{total}</span> حجز
-        </p>
-        <div className="flex items-center gap-1.5">
-          <Button variant="outline" size="sm" onClick={() => onPageChange(Math.max(1, page - 1))}
-            disabled={page === 1} className="h-7 text-[11px] border-border/30 rounded-lg px-3">السابق</Button>
-          <span className="text-[11px] text-muted-foreground/60 px-2 tabular-nums font-medium">صفحة {page}</span>
-          <Button variant="outline" size="sm" onClick={() => onPageChange(page + 1)}
-            disabled={filtered.length < 10} className="h-7 text-[11px] border-border/30 rounded-lg px-3">التالي</Button>
-        </div>
-      </div>
+      {/* `filtered.length < 10` used to stand in for "last page", which
+          disables next on any short final page even when more exist. */}
+      <TablePagination
+        page={page}
+        totalPages={Math.max(1, Math.ceil(total / 10))}
+        total={total}
+        shown={filtered.length}
+        unit="حجز"
+        onPageChange={onPageChange}
+        className="bg-secondary/10"
+      />
     </Card>
   );
 }

@@ -22,7 +22,7 @@ export default function ErrorBoundary({
     <div className="min-h-[80vh] flex items-center justify-center p-6">
       <div className="max-w-md w-full text-center space-y-6 bg-card/50 p-8 rounded-2xl border border-border/40 backdrop-blur-xl">
         <div className="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mx-auto mb-6">
-          <AlertTriangle className="w-8 h-8 text-rose-500" />
+          <AlertTriangle className="w-8 h-8 text-danger" />
         </div>
         
         <div className="space-y-2">
@@ -33,8 +33,8 @@ export default function ErrorBoundary({
         </div>
 
         {error.message && (
-          <div className="bg-background/50 border border-border/30 rounded-lg p-3 text-left overflow-x-auto">
-            <code className="text-xs text-rose-400 font-mono break-all">
+          <div className="bg-background/50 border border-border/30 rounded-lg p-3 text-end overflow-x-auto">
+            <code className="text-xs text-danger font-mono break-all">
               {error.message}
             </code>
           </div>
@@ -43,7 +43,7 @@ export default function ErrorBoundary({
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
           <Button
             onClick={() => reset()}
-            className="w-full sm:w-auto gap-2 bg-primary hover:bg-primary/90 text-white"
+            className="w-full sm:w-auto gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             <RefreshCw className="w-4 h-4" />
             إعادة المحاولة

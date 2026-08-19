@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { getProvidersByGovernorate } from "@/infrastructure/services/stats.service";
-import { Map, MapPin, Users, Info, HelpCircle } from "lucide-react";
+import { Map, MapPin, Users, Info } from "lucide-react";
 
 const GOVERNORATE_NAMES: Record<string, { ar: string; en: string }> = {
   Damascus: { ar: "دمشق", en: "Damascus" },
@@ -30,20 +30,30 @@ interface MapData {
   value: number;
 }
 
-export function SyriaMap() {
+interface SyriaMapProps {
+  govCounts?: unknown;
+}
+
+export function SyriaMap({ govCounts: externalGovCounts }: SyriaMapProps = {}) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [selectedGov, setSelectedGov] = useState<MapData | null>(null);
   const [previewGov, setPreviewGov] = useState<MapData | null>(null);
+  const shouldFetchGovernorates = !externalGovCounts;
 
   // Fetch governorate counts from real API data
-  const { data: govCounts, isLoading } = useQuery({
+  const { data: fetchedGovCounts, isLoading } = useQuery({
     queryKey: ["providers-by-governorate"],
     queryFn: getProvidersByGovernorate,
     retry: 1,
+    enabled: shouldFetchGovernorates,
   });
 
   // Extract counts to send to the map
-  const rawGovList = govCounts?.data ?? govCounts ?? [];
+  const rawGovList = useMemo<any[]>(() => {
+    const source = externalGovCounts ?? fetchedGovCounts;
+    const value = (source as { data?: unknown[] })?.data ?? source ?? [];
+    return Array.isArray(value) ? value : [];
+  }, [externalGovCounts, fetchedGovCounts]);
 
   // Update map data inside iframe whenever API data is loaded
   useEffect(() => {
@@ -110,10 +120,10 @@ export function SyriaMap() {
         <div>
           <div className="mb-6">
             <h3 className="font-bold text-white text-lg tracking-tight flex items-center gap-2">
-              <Map className="w-5 h-5 text-violet-400" />
+              <Map className="w-5 h-5 text-warning" />
               الخريطة التفاعلية للمزودين
             </h3>
-            <p className="text-[12px] text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               خريطة توضح توزيع مزودي الخدمة الفعليين عبر المحافظات السورية
             </p>
           </div>
@@ -128,16 +138,16 @@ export function SyriaMap() {
                     </div>
                     <div>
                       <h4 className="font-bold text-white text-base">{govName}</h4>
-                      <p className="text-[10px] text-muted-foreground uppercase font-mono">
+                      <p className="text-xs text-muted-foreground uppercase font-mono">
                         {displayGov.governorate}
                       </p>
                     </div>
                   </div>
                   <span
-                    className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
+                    className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
                       isActive
-                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                        : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                        ? "bg-emerald-500/10 text-success border-emerald-500/20"
+                        : "bg-amber-500/10 text-warning border-amber-500/20"
                     }`}
                   >
                     {isActive ? "نشط" : "قريباً"}
@@ -146,17 +156,17 @@ export function SyriaMap() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-4 rounded-xl bg-secondary/20 border border-border/40 text-center hover:border-border/80 transition-colors">
-                    <span className="text-2xl font-black text-white tabular-nums flex justify-center items-center gap-1.5">
-                      <Users className="w-4 h-4 text-violet-400" />
+                    <span className="text-2xl font-bold text-white tabular-nums flex justify-center items-center gap-1.5">
+                      <Users className="w-4 h-4 text-warning" />
                       {displayGov.value}
                     </span>
-                    <p className="text-[11px] text-muted-foreground mt-1.5 font-medium">مزود خدمة</p>
+                    <p className="text-xs text-muted-foreground mt-1.5 font-semibold">مزود خدمة</p>
                   </div>
                   <div className="p-4 rounded-xl bg-secondary/20 border border-border/40 text-center hover:border-border/80 transition-colors">
-                    <span className="text-2xl font-black text-emerald-400 tabular-nums">
+                    <span className="text-2xl font-bold text-success tabular-nums">
                       {isActive ? "100%" : "0%"}
                     </span>
-                    <p className="text-[11px] text-muted-foreground mt-1.5 font-medium">نسبة التغطية</p>
+                    <p className="text-xs text-muted-foreground mt-1.5 font-semibold">نسبة التغطية</p>
                   </div>
                 </div>
 
@@ -168,9 +178,9 @@ export function SyriaMap() {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center text-center h-[200px] border border-dashed border-border/40 rounded-2xl p-4 bg-secondary/5">
-                <Info className="w-10 h-10 text-muted-foreground/30 mb-3" />
+                <Info className="w-10 h-10 text-muted-foreground/60 mb-3" />
                 <h4 className="font-semibold text-white text-sm">استكشف التغطية</h4>
-                <p className="text-xs text-muted-foreground/50 mt-1 max-w-[220px] leading-relaxed">
+                <p className="text-xs text-muted-foreground/60 mt-1 max-w-[220px] leading-relaxed">
                   مرر مؤشر الفأرة أو اضغط على أي محافظة على الخريطة لعرض تفاصيل المزودين والتغطية
                 </p>
               </div>
@@ -179,13 +189,13 @@ export function SyriaMap() {
         </div>
 
         {/* Legend */}
-        <div className="pt-4 border-t border-border/20 space-y-2 text-[11px]">
+        <div className="pt-4 border-t border-border/20 space-y-2 text-xs">
           <div className="flex justify-between items-center text-muted-foreground">
             <span>درجة كثافة المزودين:</span>
-            <div className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded bg-[#ddd5eb]" />
-              <span className="w-2.5 h-1.5 bg-gradient-to-r from-[#8b5fbf] to-[#6a1b9a]" />
-              <span className="text-[9px]">أعلى</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs">منخفض</span>
+              <div className="w-24 h-1.5 rounded-full bg-gradient-to-l from-amber-500 via-emerald-500 to-slate-800" />
+              <span className="text-xs">كثيف</span>
             </div>
           </div>
         </div>
@@ -193,17 +203,18 @@ export function SyriaMap() {
 
       {/* Map iframe */}
       <div className="flex-1 min-h-[380px] md:min-h-[480px] rounded-2xl overflow-hidden border border-border/30 bg-background/40 relative">
-        {isLoading && (
+        {shouldFetchGovernorates && isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-20">
             <div className="flex flex-col items-center gap-3">
               <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-              <span className="text-xs text-muted-foreground font-medium">جارٍ تحميل خريطة سوريا...</span>
+              <span className="text-xs text-muted-foreground font-semibold">جارٍ تحميل خريطة سوريا...</span>
             </div>
           </div>
         )}
         <iframe
           ref={iframeRef}
           src="/maps/syria_choropleth.html"
+          loading="lazy"
           className="w-full h-full border-none block"
           title="Syria Interactive Map"
         />

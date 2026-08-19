@@ -6,6 +6,7 @@ import { ar } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface Payout {
   _id?: string;
@@ -58,12 +59,12 @@ export default function PayoutRequests({
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-4 w-full sm:w-auto">
                 <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
-                  <Landmark className="w-5 h-5 text-amber-400" />
+                  <Landmark className="w-5 h-5 text-warning" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <h4 className="font-bold text-sm text-white">طلب سحب: {payout.ownerName || payout.providerName || "مزود غير معروف"}</h4>
-                    <Badge variant="outline" className="text-[10px] border-border/40">{statusLabel[payout.status] || payout.status}</Badge>
+                    <Badge variant="outline" className="text-xs border-border/40">{statusLabel[payout.status] || payout.status}</Badge>
                   </div>
                   <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1 font-mono">
@@ -78,8 +79,8 @@ export default function PayoutRequests({
                 </div>
               </div>
               <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
-                <div className="text-right">
-                  <p className="text-[10px] text-muted-foreground mb-0.5">المبلغ المطلوب</p>
+                <div className="text-start">
+                  <p className="text-xs text-muted-foreground mb-0.5">المبلغ المطلوب</p>
                   <p className="text-lg font-bold text-foreground tabular-nums">{Number(payout.amount || 0).toLocaleString("ar-SY")} ل.س</p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -95,7 +96,7 @@ export default function PayoutRequests({
                     variant="outline"
                     onClick={() => onApprove(id, "reject")}
                     disabled={!canProcess || (isPending && approvingId === id)}
-                    className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10 gap-2"
+                    className="border-rose-500/30 text-danger hover:bg-rose-500/10 gap-2"
                   >
                     <XCircle className="w-4 h-4" /> رفض
                   </Button>
@@ -106,10 +107,12 @@ export default function PayoutRequests({
         );
       })}
       {!isLoading && payouts.length === 0 && (
-        <Card className="p-16 text-center border-border/40 bg-card/50">
-          <Receipt className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
-          <h3 className="text-sm font-semibold text-white">لا توجد طلبات سحب مطابقة</h3>
-          <p className="text-xs text-muted-foreground mt-1">كل طلبات السحب الحالية ضمن هذا الفلتر تمت معالجتها أو غير موجودة.</p>
+        <Card className="p-16 border-border/40 bg-card/50">
+          <EmptyState
+            icon={Receipt}
+            title="لا توجد طلبات سحب مطابقة"
+            description="كل طلبات السحب الحالية ضمن هذا الفلتر تمت معالجتها أو غير موجودة."
+          />
         </Card>
       )}
     </div>

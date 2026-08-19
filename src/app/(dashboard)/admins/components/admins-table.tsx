@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, Edit, KeyRound, Mail, MoreHorizontal, Power, Trash2 } from "lucide-react";
+import { Calendar, Edit, KeyRound, Mail, MoreHorizontal, Power, ShieldAlert, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export interface AdminRow { _id: string; name: string; email: string; permissions: string[]; isActive: boolean; lastLoginAt?: string; }
 interface Props { admins: AdminRow[]; isLoading: boolean; isError: boolean; currentAdminId?: string; canUpdate: boolean; canDelete: boolean; permissionLabels: Record<string, string>; onEdit: (admin: AdminRow) => void; onPassword: (admin: AdminRow) => void; onDeleteClick: (id: string) => void; onToggleStatus: (id: string, active: boolean) => void; }
@@ -30,8 +31,8 @@ export default function AdminsTable(props: Props) {
         </DropdownMenuContent></DropdownMenu>}
       </div>
       <div className="flex min-h-14 flex-wrap content-start gap-1.5">{(admin.permissions ?? []).length ? admin.permissions.map((permission) => <Badge key={permission} variant="outline">{props.permissionLabels[permission] ?? permission}</Badge>) : <span className="text-xs text-muted-foreground">لا توجد صلاحيات ممنوحة</span>}</div>
-      <div className="mt-4 flex items-center justify-between border-t border-border/20 pt-3"><Badge variant="outline" className={admin.isActive ? "text-emerald-400" : "text-rose-400"}>{admin.isActive ? "نشط" : "معطل"}</Badge><span className="flex items-center gap-1 text-[11px] text-muted-foreground"><Calendar className="h-3 w-3" /> آخر دخول: {admin.lastLoginAt ? formatDistanceToNow(new Date(admin.lastLoginAt), { locale: ar, addSuffix: true }) : "لم يسجل بعد"}</span></div>
+      <div className="mt-4 flex items-center justify-between border-t border-border/20 pt-3"><Badge variant="outline" className={admin.isActive ? "text-success" : "text-danger"}>{admin.isActive ? "نشط" : "معطل"}</Badge><span className="flex items-center gap-1 text-xs text-muted-foreground"><Calendar className="h-3 w-3" /> آخر دخول: {admin.lastLoginAt ? formatDistanceToNow(new Date(admin.lastLoginAt), { locale: ar, addSuffix: true }) : "لم يسجل بعد"}</span></div>
     </Card>;
   })}</div>;
 }
-function Empty({ text }: { text: string }) { return <div className="border border-dashed border-border/50 p-10 text-center text-sm text-muted-foreground">{text}</div>; }
+function Empty({ text }: { text: string }) { return <EmptyState icon={ShieldAlert} title={text} />; }

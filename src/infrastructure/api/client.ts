@@ -1,4 +1,10 @@
 import axios from "axios";
+import {
+  clearStoredSession,
+  getAccessToken,
+  getRefreshToken,
+  updateStoredTokens,
+} from "@/infrastructure/auth/admin-session";
 
 const configuredApiBase = process.env.NEXT_PUBLIC_API_URL;
 const API_BASE =
@@ -11,9 +17,11 @@ export const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+let refreshRequest: Promise<string | null> | null = null;
+
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("admin_access_token");
+    const token = getAccessToken();
     if (token) config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -22,13 +30,25 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
+    const originalRequest = error.config;
+    const isAuthEndpoint =
+      typeof originalRequest?.url === "string" &&
+      ["/admin/login", "/admin/refresh-token", "/admin/logout"].some((path) => originalRequest.url.includes(path));
+
+    if (error.response?.status === 401 && !originalRequest?._retry && !isAuthEndpoint) {
+      originalRequest._retry = true;
+
+      const token = await refreshAccessToken();
+      if (token) {
+        originalRequest.headers = originalRequest.headers ?? {};
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+        return api(originalRequest);
+      }
+    }
+
     if (error.response?.status === 401) {
       if (typeof window !== "undefined") {
-        localStorage.removeItem("admin_access_token");
-        localStorage.removeItem("admin_refresh_token");
-        localStorage.removeItem("admin_data");
-        
-        document.cookie = "admin_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        clearStoredSession();
 
         if (window.location.pathname !== "/login") {
           window.location.href = "/login";
@@ -38,3 +58,28 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+async function refreshAccessToken() {
+  if (typeof window === "undefined") return null;
+
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return null;
+
+  refreshRequest ??= axios
+    .post(`${API_BASE}/admin/refresh-token`, { refreshToken })
+    .then((response) => {
+      const payload = response.data?.data ?? response.data;
+      const accessToken = payload?.accessToken;
+      const nextRefreshToken = payload?.refreshToken;
+
+      if (!accessToken || !nextRefreshToken) return null;
+      updateStoredTokens(accessToken, nextRefreshToken);
+      return accessToken as string;
+    })
+    .catch(() => null)
+    .finally(() => {
+      refreshRequest = null;
+    });
+
+  return refreshRequest;
+}

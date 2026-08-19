@@ -4,6 +4,10 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  DataTable, DataTableHead, DataTableTh, DataTableBody, DataTableStateRow,
+} from "@/components/ui/data-table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
@@ -20,18 +24,20 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
+import { TablePagination } from "@/components/ui/table-pagination";
 
 const avatarColors = [
-  "from-blue-500/20 to-blue-600/10 text-blue-400",
-  "from-violet-500/20 to-violet-600/10 text-violet-400",
-  "from-emerald-500/20 to-emerald-600/10 text-emerald-400",
-  "from-orange-500/20 to-orange-600/10 text-orange-400",
+  "from-blue-500/20 to-blue-600/10 text-info",
+  "from-violet-500/20 to-violet-600/10 text-info",
+  "from-emerald-500/20 to-emerald-600/10 text-success",
+  "from-orange-500/20 to-orange-600/10 text-warning",
   "from-pink-500/20 to-pink-600/10 text-pink-400",
 ];
 
 interface UsersTableProps {
   users: any[];
   isLoading: boolean;
+  isFetching?: boolean;
   total: number;
   search: string;
   setSearch: (s: string) => void;
@@ -64,6 +70,7 @@ interface UsersTableProps {
 export default function UsersTable({
   users,
   isLoading,
+  isFetching,
   total,
   search,
   setSearch,
@@ -115,19 +122,19 @@ export default function UsersTable({
     const status = user.subscriptionStatus || "none";
     const label = user.subscriptionPlanNameAr || user.subscriptionPlanName || subscriptionLabels[status] || "بدون اشتراك";
     const classes: Record<string, string> = {
-      active: "border-emerald-400/25 bg-emerald-400/10 text-emerald-300",
-      expired: "border-amber-400/25 bg-amber-400/10 text-amber-300",
-      cancelled: "border-rose-400/25 bg-rose-400/10 text-rose-300",
+      active: "border-emerald-400/25 bg-emerald-400/10 text-success",
+      expired: "border-amber-400/25 bg-amber-400/10 text-warning",
+      cancelled: "border-rose-400/25 bg-rose-400/10 text-danger",
       none: "border-border/40 bg-secondary/30 text-muted-foreground",
     };
 
     return (
       <div className="flex flex-col gap-1">
-        <span className={`inline-flex w-fit items-center rounded-md border px-2 py-0.5 text-[10px] font-bold ${classes[status] || classes.none}`}>
+        <span className={`inline-flex w-fit items-center rounded-md border px-2 py-0.5 text-xs font-bold ${classes[status] || classes.none}`}>
           {label}
         </span>
         {user.subscriptionEndDate && (
-          <span className="text-[9px] text-muted-foreground/60">
+          <span className="text-xs text-muted-foreground/60">
             حتى {new Date(user.subscriptionEndDate).toLocaleDateString("ar-SY")}
           </span>
         )}
@@ -144,18 +151,22 @@ export default function UsersTable({
           </div>
           <div>
             <h2 className="font-bold text-white text-sm tracking-tight">إدارة شؤون العملاء</h2>
-            <p className="text-[10px] text-muted-foreground mt-0.5">البحث والتحكم في حسابات العملاء المسجلين في المنصة</p>
+            <p className="text-xs text-muted-foreground mt-0.5">البحث والتحكم في حسابات العملاء المسجلين في المنصة</p>
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
           <div className="relative w-full sm:w-56">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50 pointer-events-none" />
+            {isFetching ? (
+              <Loader2 className="absolute start-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-primary animate-spin" />
+            ) : (
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50 pointer-events-none" />
+            )}
             <Input
               placeholder="بحث بالاسم أو الهاتف..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="bg-background/80 border-border/40 text-xs h-9 pr-9 rounded-lg focus-visible:ring-primary placeholder:text-muted-foreground/40"
+              className="bg-background/80 border-border/40 text-xs h-9 ps-9 rounded-lg focus-visible:ring-primary placeholder:text-muted-foreground/40"
             />
           </div>
 
@@ -164,8 +175,8 @@ export default function UsersTable({
             onValueChange={(v: "all" | "active" | "inactive" | null) => { setStatusFilter(v || "all"); setPage(1); }}
           >
             <SelectTrigger className="w-full sm:w-36 h-9 bg-background/80 border-border/40 text-xs rounded-lg">
-              <Filter className="w-3 h-3 text-muted-foreground ml-1.5 shrink-0" />
-              <span className="flex-1 text-left">{statusLabels[statusFilter]}</span>
+              <Filter className="w-3 h-3 text-muted-foreground me-1.5 shrink-0" />
+              <span className="flex-1 text-end">{statusLabels[statusFilter]}</span>
             </SelectTrigger>
             <SelectContent className="bg-popover border-border/40 rounded-xl">
               <SelectItem value="all" className="text-xs">جميع الحالات</SelectItem>
@@ -179,8 +190,8 @@ export default function UsersTable({
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3 p-4 border-b border-border/20 bg-background/20">
         <Select value={premiumFilter} onValueChange={(v: "all" | "premium" | "standard" | null) => { setPremiumFilter(v || "all"); setPage(1); }}>
           <SelectTrigger className="w-full h-9 bg-background/80 border-border/40 text-xs rounded-lg">
-            <Crown className="w-3 h-3 text-amber-400 ml-1.5" />
-            <span className="flex-1 text-left">{premiumLabels[premiumFilter]}</span>
+            <Crown className="w-3 h-3 text-warning me-1.5" />
+            <span className="flex-1 text-end">{premiumLabels[premiumFilter]}</span>
           </SelectTrigger>
           <SelectContent className="bg-popover border-border/40 rounded-xl">
             <SelectItem value="all" className="text-xs">كل العملاء</SelectItem>
@@ -191,8 +202,8 @@ export default function UsersTable({
 
         <Select value={subscriptionFilter} onValueChange={(v: "all" | "active" | "expired" | "cancelled" | "none" | null) => { setSubscriptionFilter(v || "all"); setPage(1); }}>
           <SelectTrigger className="w-full h-9 bg-background/80 border-border/40 text-xs rounded-lg">
-            <WalletCards className="w-3 h-3 text-emerald-400 ml-1.5" />
-            <span className="flex-1 text-left">{subscriptionLabels[subscriptionFilter]}</span>
+            <WalletCards className="w-3 h-3 text-success me-1.5" />
+            <span className="flex-1 text-end">{subscriptionLabels[subscriptionFilter]}</span>
           </SelectTrigger>
           <SelectContent className="bg-popover border-border/40 rounded-xl">
             <SelectItem value="all" className="text-xs">كل الاشتراكات</SelectItem>
@@ -205,7 +216,7 @@ export default function UsersTable({
 
         <Select value={planFilter} onValueChange={(v) => { setPlanFilter(v || "all"); setPage(1); }}>
           <SelectTrigger className="w-full h-9 bg-background/80 border-border/40 text-xs rounded-lg">
-            <span className="flex-1 text-left">{planLabels[planFilter] || planFilter}</span>
+            <span className="flex-1 text-end">{planLabels[planFilter] || planFilter}</span>
           </SelectTrigger>
           <SelectContent className="bg-popover border-border/40 rounded-xl">
             <SelectItem value="all" className="text-xs">كل الخطط</SelectItem>
@@ -236,8 +247,8 @@ export default function UsersTable({
         <div className="flex gap-2 xl:col-span-2">
           <Select value={sortBy} onValueChange={(v) => { setSortBy(v || "newest"); setPage(1); }}>
             <SelectTrigger className="flex-1 h-9 bg-background/80 border-border/40 text-xs rounded-lg">
-              <SlidersHorizontal className="w-3 h-3 text-muted-foreground ml-1.5" />
-              <span className="flex-1 text-left">{sortLabels[sortBy]}</span>
+              <SlidersHorizontal className="w-3 h-3 text-muted-foreground me-1.5" />
+              <span className="flex-1 text-end">{sortLabels[sortBy]}</span>
             </SelectTrigger>
             <SelectContent className="bg-popover border-border/40 rounded-xl">
               <SelectItem value="newest" className="text-xs">الأحدث</SelectItem>
@@ -257,36 +268,35 @@ export default function UsersTable({
               <SelectItem value="asc" className="text-xs">تصاعدي</SelectItem>
             </SelectContent>
           </Select>
-          <Button type="button" variant="outline" size="sm" onClick={resetAdvancedFilters} className="h-9 rounded-lg border-border/40 text-[10px]">
+          <Button type="button" variant="outline" size="sm" onClick={resetAdvancedFilters} className="h-9 rounded-lg border-border/40 text-xs">
             تصفير
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={onExportUsers} disabled={isLoading || users.length === 0} className="h-9 rounded-lg border-border/40 text-[10px]">
+          <Button type="button" variant="outline" size="sm" onClick={onExportUsers} disabled={isLoading || users.length === 0} className="h-9 rounded-lg border-border/40 text-xs">
             <Download className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
 
       {errorMessage && (
-        <div className="border-b border-rose-400/20 bg-rose-500/10 px-5 py-3 text-xs font-semibold text-rose-300">
+        <div className="border-b border-rose-400/20 bg-rose-500/10 px-5 py-3 text-xs font-semibold text-danger">
           {errorMessage}
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-right border-collapse">
-          <thead>
-            <tr className="border-b border-border/20 bg-secondary/5 text-muted-foreground">
-              {["العميل", "رقم الهاتف", "الحالة", "الاشتراك", "الرصيد", "نقاط الولاء", "آخر دخول", ""].map((h) => (
-                <th key={h} className="px-5 py-3.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
-                  {h}
-                </th>
+      <DataTable caption="قائمة العملاء" minWidth={860}>
+          <DataTableHead>
+            <tr>
+              {["العميل", "رقم الهاتف", "الحالة", "الاشتراك", "الرصيد", "نقاط الولاء", "آخر دخول"].map((h) => (
+                <DataTableTh key={h}>{h}</DataTableTh>
               ))}
+              {/* الإجراءات: عمود بلا عنوان مرئي، فيحمل تسمية للقارئ */}
+              <DataTableTh><span className="sr-only">الإجراءات</span></DataTableTh>
             </tr>
-          </thead>
-          <tbody>
+          </DataTableHead>
+          <DataTableBody>
             {isLoading ? (
               Array.from({ length: 6 }).map((_, i) => (
-                <tr key={i} className="border-b border-border/10">
+                <tr key={i} className="border-b border-border/10" aria-hidden="true">
                   {Array.from({ length: 8 }).map((_, j) => (
                     <td key={j} className="px-5 py-4">
                       <Skeleton className="h-4 w-24 rounded-md" />
@@ -295,14 +305,17 @@ export default function UsersTable({
                 </tr>
               ))
             ) : users.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="px-5 py-12 text-center text-xs text-muted-foreground font-medium">
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <AlertCircle className="w-6 h-6 text-muted-foreground/40" />
-                    <span>لم يتم العثور على أي عملاء يطابقون خيارات البحث.</span>
-                  </div>
-                </td>
-              </tr>
+              <DataTableStateRow colSpan={8}>
+                  <EmptyState
+                    title="لم يتم العثور على عملاء"
+                    description="لا توجد حسابات عملاء تطابق فلاتر البحث الحالية."
+                    icon={Users}
+                    action={{
+                      label: "تصفير الفلاتر",
+                      onClick: resetAdvancedFilters,
+                    }}
+                  />
+              </DataTableStateRow>
             ) : (
               users.map((user: any, i: number) => {
                 const id = user._id || user.id;
@@ -316,14 +329,14 @@ export default function UsersTable({
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8.5 w-8.5 border border-border/30 shadow-sm shrink-0">
-                          <AvatarFallback className={`bg-gradient-to-br ${avatarColors[i % avatarColors.length]} text-[11px] font-black`}>
+                          <AvatarFallback className={`bg-gradient-to-br ${avatarColors[i % avatarColors.length]} text-xs font-bold`}>
                             {user.fullName ? user.fullName.charAt(0) : "ع"}
                           </AvatarFallback>
                         </Avatar>
                         <div className="overflow-hidden">
                           <p className="text-xs font-bold text-foreground truncate max-w-[150px]">{user.fullName || "عميل غير مسمى"}</p>
                           {user.isPremium && (
-                            <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-amber-400 mt-0.5 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.2 rounded-md">
+                            <span className="inline-flex items-center gap-0.5 text-xs font-bold text-warning mt-0.5 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.2 rounded-md">
                               <Crown className="w-2.5 h-2.5 animate-pulse" /> مميز
                             </span>
                           )}
@@ -343,17 +356,17 @@ export default function UsersTable({
                     </td>
                     <td className="px-5 py-3.5">{renderSubscription(user)}</td>
                     <td className="px-5 py-3.5">
-                      <span className="text-xs font-black text-white tabular-nums">
+                      <span className="text-xs font-bold text-white tabular-nums">
                         {Number(user.walletBalance ?? 0).toLocaleString("ar-SA")}
-                        <span className="text-[10px] text-muted-foreground/60 font-medium mr-1">ل.س</span>
+                        <span className="text-xs text-muted-foreground/60 font-semibold ms-1">ل.س</span>
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="text-xs font-black text-amber-400/90 tabular-nums">
+                      <span className="text-xs font-bold text-warning/90 tabular-nums">
                         {Number(user.loyaltyPoints ?? 0).toLocaleString("ar-SA")}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-[11px] text-muted-foreground/70">
+                    <td className="px-5 py-3.5 text-xs text-muted-foreground/70">
                       {user.lastLoginAt
                         ? formatDistanceToNow(new Date(user.lastLoginAt), { locale: ar, addSuffix: true })
                         : "غير مسجل"}
@@ -375,14 +388,14 @@ export default function UsersTable({
                             disabled={isMutating}
                           >
                             {user.isActive ? (
-                              <><UserX className="w-3.5 h-3.5 text-rose-400" /> تعطيل الحساب</>
+                              <><UserX className="w-3.5 h-3.5 text-danger" /> تعطيل الحساب</>
                             ) : (
-                              <><UserCheck className="w-3.5 h-3.5 text-emerald-400" /> تفعيل الحساب</>
+                              <><UserCheck className="w-3.5 h-3.5 text-success" /> تفعيل الحساب</>
                             )}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="bg-border/20" />
                           <DropdownMenuItem
-                            className="gap-2 text-xs text-rose-400 cursor-pointer font-bold"
+                            className="gap-2 text-xs text-danger cursor-pointer font-bold"
                             onClick={() => onDeleteUser(id)}
                             disabled={isMutating}
                           >
@@ -395,65 +408,22 @@ export default function UsersTable({
                 );
               })
             )}
-          </tbody>
-        </table>
-      </div>
+          </DataTableBody>
+      </DataTable>
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-t border-border/20 bg-secondary/5">
-        <p className="text-[11px] text-muted-foreground/60">
-          يتم عرض <span className="font-bold text-foreground">{users.length}</span> من أصل{" "}
-          <span className="font-bold text-white">{total}</span> عميل مسجل
-        </p>
-
-        <div className="flex items-center gap-1.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="h-7 text-[10px] font-bold border-border/30 rounded-lg px-2.5 transition-all hover:bg-secondary"
-          >
-            السابق
-          </Button>
-
-          <div className="flex items-center gap-1">
-            {Array.from({ length: totalPages }).map((_, idx) => {
-              const pageNum = idx + 1;
-              if (totalPages > 5 && Math.abs(page - pageNum) > 2 && pageNum !== 1 && pageNum !== totalPages) {
-                if (pageNum === 2 || pageNum === totalPages - 1) {
-                  return <span key={pageNum} className="text-[10px] text-muted-foreground/30 px-1">...</span>;
-                }
-                return null;
-              }
-              return (
-                <Button
-                  key={pageNum}
-                  variant={page === pageNum ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setPage(pageNum)}
-                  className={`w-7 h-7 p-0 text-xs rounded-lg font-bold transition-all ${
-                    page === pageNum
-                      ? "bg-primary text-primary-foreground font-black shadow-md shadow-primary/10"
-                      : "border-border/30 hover:border-border/80 text-muted-foreground hover:text-white"
-                  }`}
-                >
-                  {pageNum}
-                </Button>
-              );
-            })}
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages || users.length < 10}
-            className="h-7 text-[10px] font-bold border-border/30 rounded-lg px-2.5 transition-all hover:bg-secondary"
-          >
-            التالي
-          </Button>
-        </div>
-      </div>
+      {/* numbered pages moved into the shared component; `users.length < 10`
+          no longer stands in for "last page" */}
+      <TablePagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        shown={users.length}
+        unit="عميل مسجل"
+        showPageNumbers
+        busy={isFetching}
+        onPageChange={(next) => setPage(() => next)}
+      />
+    
     </Card>
   );
 }

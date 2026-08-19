@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FilterSelectValue, Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import type { Review } from "@/domain/entities/review.types";
 import { deleteReview, getReviews, getReviewStats, toggleReviewVisibility, type ReviewFilters } from "@/infrastructure/services/reviews.service";
 import DeleteConfirmDialog from "./components/delete-confirm-dialog";
@@ -30,14 +30,14 @@ export default function ReviewsPage() {
   return <div className="space-y-5" dir="rtl">
     <div><h2 className="text-lg font-bold">إدارة ومراجعة التقييمات</h2><p className="text-xs text-muted-foreground">مراقبة تقييمات العملاء، البلاغات، ردود المزودين وحالة الظهور.</p></div>
     <ReviewsStats stats={unwrap(statsQuery.data)} />
-    <Card className="p-3 bg-card border-border/40 grid gap-2 md:grid-cols-4 xl:grid-cols-10">
-      <div className="relative md:col-span-2"><Search className="absolute right-3 top-2.5 w-3.5 h-3.5 text-muted-foreground" /><Input className="pr-9" value={filters.search} onChange={(e) => setFilter("search", e.target.value)} placeholder="بحث بالمستخدم، المزود أو التعليق..." /></div>
-      <Filter value={filters.isReported} set={(v) => setFilter("isReported", v)} items={[["all", "كل البلاغات"], ["true", "مبلغ عنها"], ["false", "غير مبلغ عنها"]]} />
-      <Filter value={filters.isVisible} set={(v) => setFilter("isVisible", v)} items={[["all", "كل حالات الظهور"], ["true", "ظاهرة"], ["false", "مخفية"]]} />
-      <Filter value={filters.rating} set={(v) => setFilter("rating", v)} items={[["all", "كل النجوم"], ["5", "5 نجوم"], ["4", "4 نجوم"], ["3", "3 نجوم"], ["2", "نجمتان"], ["1", "نجمة واحدة"]]} />
-      <Filter value={filters.hasResponse} set={(v) => setFilter("hasResponse", v)} items={[["all", "كل الردود"], ["true", "مع رد"], ["false", "بدون رد"]]} />
-      <Filter value={filters.sortBy} set={(v) => setFilter("sortBy", v)} items={[["createdAt", "الفرز: التاريخ"], ["rating", "الفرز: النجوم"], ["helpfulCount", "الفرز: الإعجابات"]]} />
-      <Filter value={filters.sortOrder} set={(v) => setFilter("sortOrder", v as "asc" | "desc")} items={[["desc", "تنازلي"], ["asc", "تصاعدي"]]} />
+    <Card className="p-3 bg-card border-border/40 grid gap-6 md:grid-cols-4 xl:grid-cols-10">
+      <div className="relative md:col-span-2"><Search className="absolute start-3 top-2.5 w-3.5 h-3.5 text-muted-foreground" /><Input className="ps-9" value={filters.search} onChange={(e) => setFilter("search", e.target.value)} placeholder="بحث بالمستخدم، المزود أو التعليق..." /></div>
+      <Filter label="البلاغات" value={filters.isReported} set={(v) => setFilter("isReported", v)} items={[["all", "كل البلاغات"], ["true", "مبلغ عنها"], ["false", "غير مبلغ عنها"]]} />
+      <Filter label="الظهور" value={filters.isVisible} set={(v) => setFilter("isVisible", v)} items={[["all", "كل حالات الظهور"], ["true", "ظاهرة"], ["false", "مخفية"]]} />
+      <Filter label="التقييم" value={filters.rating} set={(v) => setFilter("rating", v)} items={[["all", "كل النجوم"], ["5", "5 نجوم"], ["4", "4 نجوم"], ["3", "3 نجوم"], ["2", "نجمتان"], ["1", "نجمة واحدة"]]} />
+      <Filter label="الرد" value={filters.hasResponse} set={(v) => setFilter("hasResponse", v)} items={[["all", "كل الردود"], ["true", "مع رد"], ["false", "بدون رد"]]} />
+      <Filter label="الفرز" value={filters.sortBy} set={(v) => setFilter("sortBy", v)} items={[["createdAt", "التاريخ"], ["rating", "النجوم"], ["helpfulCount", "الإعجابات"]]} />
+      <Filter label="الاتجاه" value={filters.sortOrder} set={(v) => setFilter("sortOrder", v as "asc" | "desc")} items={[["desc", "تنازلي"], ["asc", "تصاعدي"]]} />
       <Button variant="outline" onClick={() => { setFilters(defaults); setPage(1); }}><RotateCcw className="w-3.5 h-3.5" />مسح</Button><Button variant="outline" disabled={!reviews.length} onClick={exportCsv}><Download className="w-3.5 h-3.5" />تصدير</Button>
     </Card>
     <ReviewsList reviews={reviews} isLoading={reviewsQuery.isLoading} total={pagination.total} page={page} pages={pagination.pages} setPage={setPage} onToggleVisibility={(id, visible) => toggle.mutate({ id, visible })} isTogglePending={toggle.isPending} onDeleteClick={setDeleteId} />
@@ -45,6 +45,7 @@ export default function ReviewsPage() {
   </div>;
 }
 
-function Filter({ value, set, items }: { value: string; set: (value: string) => void; items: string[][] }) {
-  return <Select value={value} onValueChange={(v) => set(v || "all")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{items.map(([key, label]) => <SelectItem key={key} value={key}>{label}</SelectItem>)}</SelectContent></Select>;
+function Filter({ label, value, set, items }: { label: string; value: string; set: (value: string) => void; items: string[][] }) {
+  const selected = items.find(([key]) => key === value)?.[1] ?? value;
+  return <Select value={value} onValueChange={(v) => set(v || "all")}><SelectTrigger><FilterSelectValue label={label} value={selected} /></SelectTrigger><SelectContent>{items.map(([key, itemLabel]) => <SelectItem key={key} value={key}>{itemLabel}</SelectItem>)}</SelectContent></Select>;
 }

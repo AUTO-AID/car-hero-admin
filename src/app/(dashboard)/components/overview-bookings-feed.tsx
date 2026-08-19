@@ -1,7 +1,11 @@
 "use client";
 
-import { Clock } from "lucide-react";
+import { Clock, ArrowLeft, Calendar, PlayCircle, CheckCircle2, XCircle, FileText } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import Link from "next/link";
 
 interface OverviewBookingsFeedProps {
   bookingsResponse: any;
@@ -12,33 +16,41 @@ export function OverviewBookingsFeed({ bookingsResponse, bookingsLoading }: Over
   const recentBookings = bookingsResponse?.bookings ?? bookingsResponse?.data ?? [];
 
   return (
-    <Card className="bg-card/60 backdrop-blur-xl border-border/40 shadow-xl shadow-black/20 overflow-hidden flex flex-col group relative">
-      <div className="absolute top-0 right-0 w-full h-[2px] bg-gradient-to-r from-violet-500 to-emerald-500" />
-      <div className="flex items-center justify-between p-6 pb-4 border-b border-border/30">
-        <div>
-          <h3 className="font-bold text-white text-base tracking-tight flex items-center gap-2">
-            أحدث طلبات الحجز
-          </h3>
-          <p className="text-[12px] text-muted-foreground mt-1">تحديث حي ومستمر للطلبات على المنصة</p>
+    <Card variant="feed" className="min-h-[400px]">
+      <div className="absolute top-0 start-0 w-full h-[2px] bg-gradient-to-r from-amber-500 to-emerald-500" />
+      <div className="flex items-center justify-between p-6 border-b border-border/30">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
+            <Calendar className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <h3 className="font-bold text-white text-base tracking-tight flex items-center gap-2">
+              أحدث طلبات الحجز
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1">تحديث حي ومستمر للطلبات على المنصة</p>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 animate-pulse">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-          <span className="text-[9px] font-black uppercase">مباشر</span>
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/15 text-success border border-emerald-500/30 pulse-live shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+          </span>
+          <span className="text-xs font-bold uppercase tracking-wider">مباشر</span>
         </div>
       </div>
 
-      <div className="flex-1 p-3 space-y-2 overflow-y-auto max-h-[300px]">
+      <div className="flex-1 p-6 space-y-3 overflow-y-auto max-h-[300px]">
         {bookingsLoading ? (
           Array.from({ length: 4 }).map((_, idx) => (
-            <div key={idx} className="flex items-center justify-between p-2.5 animate-pulse">
+            <div key={idx} className="flex items-center justify-between p-2.5">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-secondary/40 shrink-0" />
+                <div className="w-8 h-8 rounded-xl bg-secondary/30 skeleton shrink-0" />
                 <div className="space-y-1.5">
-                  <div className="h-3 w-28 bg-secondary/40 rounded" />
-                  <div className="h-2 w-16 bg-secondary/40 rounded" />
+                  <div className="h-3.5 w-28 bg-secondary/30 rounded skeleton" />
+                  <div className="h-2 w-16 bg-secondary/30 rounded skeleton" />
                 </div>
               </div>
-              <div className="h-4 w-12 bg-secondary/40 rounded" />
+              <div className="h-4 w-12 bg-secondary/30 rounded skeleton" />
             </div>
           ))
         ) : recentBookings.length > 0 ? (
@@ -50,21 +62,31 @@ export function OverviewBookingsFeed({ bookingsResponse, bookingsLoading }: Over
             return (
               <div
                 key={booking._id || i}
-                className="flex items-center justify-between p-2.5 rounded-xl bg-secondary/20 hover:bg-secondary/40 transition-all border border-border/10 hover:border-border/30 cursor-pointer animate-fade-in-up"
+                className="flex items-center justify-between p-2.5 rounded-xl bg-secondary/20 hover:bg-secondary/40 transition-all border border-border/10 hover:border-border/30 animate-fade-in-up"
               >
                 <div className="flex items-center gap-3 overflow-hidden">
                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
-                    isPending 
-                      ? "bg-amber-500/10 border-amber-500/20 text-amber-400 animate-pulse" 
+                    status === "pending" 
+                      ? "bg-amber-500/10 border-amber-500/20 text-warning animate-pulse" 
+                      : status === "accepted" || status === "in-progress" || status === "in_progress"
+                      ? "bg-blue-500/10 border-blue-500/20 text-info"
+                      : status === "completed"
+                      ? "bg-emerald-500/10 border-emerald-500/20 text-success"
+                      : status === "cancelled"
+                      ? "bg-rose-500/10 border-rose-500/20 text-danger"
                       : "bg-primary/10 border-primary/20 text-primary"
                   }`}>
-                    <Clock className="w-4 h-4" />
+                    {status === "pending" ? <Clock className="w-4 h-4" /> 
+                    : status === "accepted" || status === "in-progress" || status === "in_progress" ? <PlayCircle className="w-4 h-4" />
+                    : status === "completed" ? <CheckCircle2 className="w-4 h-4" />
+                    : status === "cancelled" ? <XCircle className="w-4 h-4" />
+                    : <FileText className="w-4 h-4" />}
                   </div>
                   <div className="overflow-hidden">
                     <p className="text-xs font-bold text-foreground truncate">
                       {booking.service?.name || "خدمة مساعدة طريق"}
                     </p>
-                    <p className="text-[10px] text-muted-foreground/80 mt-0.5 flex items-center gap-1.5">
+                    <p className="text-xs text-muted-foreground/80 mt-0.5 flex items-center gap-1.5">
                       <span>{booking.user?.fullName || "زبون كارهيرو"}</span>
                       <span className="w-1.5 h-1.5 rounded-full bg-border" />
                       <span className="tabular-nums" dir="ltr">{booking.bookingNumber || booking.orderNumber || `#${booking._id?.substring(0, 6)}`}</span>
@@ -72,30 +94,31 @@ export function OverviewBookingsFeed({ bookingsResponse, bookingsLoading }: Over
                   </div>
                 </div>
                 
-                <div className="text-left shrink-0 pl-1 flex flex-col items-end gap-1">
-                  <span className="text-xs font-black text-white tabular-nums">
+                <div className="text-end shrink-0 pe-1 flex flex-col items-end gap-1">
+                  <span className="text-xs font-bold text-white tabular-nums">
                     {amount.toLocaleString("ar-SA")} ل.س
                   </span>
-                  <span className={`inline-flex items-center text-[9px] px-1.5 py-0.5 rounded-md font-bold ${
-                    status === "completed" 
-                      ? "text-emerald-400 bg-emerald-400/10 border border-emerald-400/20"
-                      : status === "cancelled" 
-                        ? "text-rose-400 bg-rose-400/10 border border-rose-400/20"
-                        : status === "in_progress" 
-                          ? "text-blue-400 bg-blue-400/10 border border-blue-400/20 animate-pulse"
-                          : "text-amber-400 bg-amber-400/10 border border-amber-400/20"
-                  }`}>
-                    {status === "completed" ? "مكتمل" : status === "cancelled" ? "ملغي" : status === "in_progress" ? "جاري" : "انتظار"}
-                  </span>
+                  <StatusBadge status={status} />
                 </div>
               </div>
             );
           })
         ) : (
-          <div className="flex items-center justify-center h-[200px] text-muted-foreground text-xs font-medium">
-            لا يوجد طلبات حجز نشطة حالياً.
-          </div>
+          <EmptyState
+            title="لا توجد طلبات حجز نشطة"
+            description="لم يتم تسجيل أي طلبات حجز جديدة على المنصة في الوقت الحالي."
+            icon={Calendar}
+            className="py-12 justify-center"
+          />
         )}
+      </div>
+      <div className="p-6 pt-4 mt-auto border-t border-border/10 bg-secondary/5">
+        <Link href="/orders" className="block w-full">
+          <Button variant="ghost" className="w-full text-xs font-bold text-muted-foreground hover:text-primary hover:bg-primary/10 h-8 rounded-lg gap-1.5 transition-colors group">
+            عرض كل الطلبات
+            <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
+          </Button>
+        </Link>
       </div>
     </Card>
   );

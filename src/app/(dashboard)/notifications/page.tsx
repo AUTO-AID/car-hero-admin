@@ -1,8 +1,9 @@
 "use client";
 
+import * as React from "react";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, CalendarClock, CheckCircle2, History, RotateCcw, Search, Send, Users } from "lucide-react";
+import { AlertCircle, Bell, CalendarClock, CheckCircle2, History, RotateCcw, Search, Send, Users } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 import { toast } from "sonner";
@@ -11,13 +12,19 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FilterSelectValue, Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { StatCard } from "@/components/ui/stat-card";
 import { Textarea } from "@/components/ui/textarea";
 import { getNotificationCampaigns, getNotificationStats, sendNotificationCampaign } from "@/infrastructure/services/notifications.service";
+import { queryKeys } from "@/infrastructure/query/query-keys";
+import { TablePagination } from "@/components/ui/table-pagination";
 
 const defaultFilters = { search: "", audience: "all", status: "all", type: "all" };
 const unwrap = (value: any) => value?.data?.data ?? value?.data ?? value ?? {};
+const apiErrorMessage = (error: any, fallback: string) => {
+  const message = error?.response?.data?.message;
+  return Array.isArray(message) ? message.join("، ") : message ?? fallback;
+};
 const audienceLabels: Record<string, string> = { all: "الجميع", users: "العملاء", premium: "مشتركو Premium", providers: "المزودون" };
 const statusLabels: Record<string, string> = { sent: "مرسلة", scheduled: "مجدولة", failed: "فشلت" };
 
@@ -26,13 +33,13 @@ export default function NotificationsPage() {
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState(defaultFilters);
   const [form, setForm] = useState({ audience: "all", type: "info", title: "", body: "", mode: "now", scheduledAt: "" });
-  const statsQuery = useQuery({ queryKey: ["notification-stats"], queryFn: getNotificationStats });
-  const campaignsQuery = useQuery({ queryKey: ["notification-campaigns", page, filters], queryFn: () => getNotificationCampaigns(page, 10, filters) });
+  const statsQuery = useQuery({ queryKey: queryKeys.notifications.stats, queryFn: getNotificationStats });
+  const campaignsQuery = useQuery({ queryKey: queryKeys.notifications.campaigns(page, filters), queryFn: () => getNotificationCampaigns(page, 10, filters) });
   const stats = unwrap(statsQuery.data); const result = unwrap(campaignsQuery.data); const campaigns = result.campaigns || []; const pagination = result.pagination || { total: 0, pages: 1 };
   const send = useMutation({
     mutationFn: sendNotificationCampaign,
-    onSuccess: (response) => { client.invalidateQueries({ queryKey: ["notification"] }); const data = unwrap(response); toast.success(data.deliveryStatus === "scheduled" ? `تمت جدولة الحملة لـ ${data.recipients} مستهدف` : `تم إرسال الحملة إلى ${data.recipients} مستهدف`); setForm((current) => ({ ...current, title: "", body: "", scheduledAt: "" })); },
-    onError: () => toast.error("تعذر إنشاء حملة الإشعارات"),
+    onSuccess: (response) => { client.invalidateQueries({ queryKey: queryKeys.notifications.all }); client.invalidateQueries({ queryKey: queryKeys.notifications.unread }); client.invalidateQueries({ queryKey: queryKeys.notifications.stats }); const data = unwrap(response); toast.success(data.deliveryStatus === "scheduled" ? `تمت جدولة الحملة لـ ${data.recipients} مستهدف` : `تم إرسال الحملة إلى ${data.recipients} مستهدف`); setForm((current) => ({ ...current, title: "", body: "", scheduledAt: "" })); },
+    onError: (error) => toast.error(apiErrorMessage(error, "تعذر إنشاء حملة الإشعارات")),
   });
   const submit = () => {
     if (!form.title.trim() || !form.body.trim()) return toast.error("أدخل عنوان الإشعار ومحتواه");
@@ -43,32 +50,80 @@ export default function NotificationsPage() {
   const setFilter = (key: keyof typeof filters, value: string) => { setFilters((current) => ({ ...current, [key]: value })); setPage(1); };
   return <div className="space-y-5" dir="rtl">
     <div><h2 className="text-lg font-bold">إدارة الإشعارات داخل التطبيق</h2><p className="text-xs text-muted-foreground">إنشاء حملات فورية أو مجدولة ومراجعة التسليم والقراءة. يتم التسليم داخل التطبيق وعبر WebSocket.</p></div>
+    {(statsQuery.isError || campaignsQuery.isError) && <Card className="border-rose-500/35 bg-rose-500/10 p-6">
+      <div className="flex items-start gap-3">
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
+        <div>
+          <p className="text-sm font-bold text-rose-100">تعذر تحميل بيانات الإشعارات</p>
+          <p className="mt-1 text-xs text-rose-100/80">
+            {statsQuery.isError ? apiErrorMessage(statsQuery.error, "فشل تحميل إحصائيات الإشعارات.") : ""}
+            {statsQuery.isError && campaignsQuery.isError ? " " : ""}
+            {campaignsQuery.isError ? apiErrorMessage(campaignsQuery.error, "فشل تحميل سجل حملات الإشعارات.") : ""}
+          </p>
+        </div>
+      </div>
+    </Card>}
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <StatCard title="إجمالي الإشعارات" value={Number(stats.notifications || 0).toLocaleString("ar-SY")} icon={Bell} iconColor="text-blue-400" iconBg="from-blue-500/15 to-blue-500/5" />
-      <StatCard title="غير المقروءة" value={Number(stats.unread || 0).toLocaleString("ar-SY")} icon={Bell} iconColor="text-amber-400" iconBg="from-amber-500/15 to-amber-500/5" />
-      <StatCard title="تم إرسالها" value={Number(stats.sent || 0).toLocaleString("ar-SY")} icon={CheckCircle2} iconColor="text-emerald-400" iconBg="from-emerald-500/15 to-emerald-500/5" />
-      <StatCard title="مجدولة" value={Number(stats.scheduled || 0).toLocaleString("ar-SY")} icon={CalendarClock} iconColor="text-violet-400" iconBg="from-violet-500/15 to-violet-500/5" />
+      <StatCard title="إجمالي الإشعارات" value={Number(stats.notifications || 0).toLocaleString("ar-SY")} icon={Bell} iconColor="text-info" iconBg="from-blue-500/15 to-blue-500/5" />
+      <StatCard title="غير المقروءة" value={Number(stats.unread || 0).toLocaleString("ar-SY")} icon={Bell} iconColor="text-warning" iconBg="from-amber-500/15 to-amber-500/5" />
+      <StatCard title="تم إرسالها" value={Number(stats.sent || 0).toLocaleString("ar-SY")} icon={CheckCircle2} iconColor="text-success" iconBg="from-emerald-500/15 to-emerald-500/5" />
+      <StatCard title="مجدولة" value={Number(stats.scheduled || 0).toLocaleString("ar-SY")} icon={CalendarClock} iconColor="text-info" iconBg="from-violet-500/15 to-violet-500/5" />
     </div>
     <div className="grid gap-5 xl:grid-cols-12">
-      <Card className="xl:col-span-4 p-5 bg-card border-border/40 space-y-4">
+      <Card className="xl:col-span-4 p-6 bg-card border-border/40 space-y-4">
         <h3 className="font-bold text-sm flex gap-2"><Send className="w-4 h-4 text-primary" />حملة إشعارات جديدة</h3>
         <Field label="الجمهور المستهدف"><Choice value={form.audience} set={(value) => setForm({ ...form, audience: value })} items={[["all", "الجميع"], ["users", "العملاء"], ["premium", "مشتركو Premium"], ["providers", "المزودون"]]} /></Field>
         <Field label="نوع الإشعار"><Choice value={form.type} set={(value) => setForm({ ...form, type: value })} items={[["info", "معلومة"], ["alert", "تنبيه"], ["system_alert", "تنبيه نظام"], ["reminder", "تذكير"]]} /></Field>
         <Field label="وقت الإرسال"><Choice value={form.mode} set={(value) => setForm({ ...form, mode: value })} items={[["now", "إرسال فوري"], ["scheduled", "جدولة الإرسال"]]} /></Field>
         {form.mode === "scheduled" && <Field label="موعد الإرسال"><Input type="datetime-local" value={form.scheduledAt} onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })} /></Field>}
         <Field label="العنوان"><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={120} placeholder="عنوان واضح ومختصر" /></Field>
-        <Field label="المحتوى"><Textarea value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} maxLength={500} rows={5} placeholder="اكتب رسالة الإشعار..." /><p className="text-[10px] text-muted-foreground text-left">{form.body.length}/500</p></Field>
+        <Field label="المحتوى"><Textarea value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} maxLength={500} rows={5} placeholder="اكتب رسالة الإشعار..." /><p className="text-xs text-muted-foreground text-end">{form.body.length}/500</p></Field>
         <Button className="w-full gap-2" disabled={send.isPending} onClick={submit}><Send className="w-4 h-4" />{send.isPending ? "جاري الحفظ..." : form.mode === "scheduled" ? "جدولة الحملة" : "إرسال الآن"}</Button>
       </Card>
       <Card className="xl:col-span-8 bg-card border-border/40 overflow-hidden">
         <div className="p-4 border-b border-border/20 flex items-center gap-2"><History className="w-4 h-4 text-primary" /><h3 className="text-sm font-bold">سجل حملات الإشعارات</h3></div>
-        <div className="p-3 grid gap-2 md:grid-cols-6 border-b border-border/20"><div className="relative md:col-span-2"><Search className="absolute right-3 top-2.5 w-3.5 h-3.5 text-muted-foreground" /><Input className="pr-9" placeholder="بحث بالعنوان أو المحتوى..." value={filters.search} onChange={(e) => setFilter("search", e.target.value)} /></div><Choice value={filters.audience} set={(v) => setFilter("audience", v)} items={[["all", "كل الجماهير"], ["users", "العملاء"], ["premium", "Premium"], ["providers", "المزودون"]]} /><Choice value={filters.status} set={(v) => setFilter("status", v)} items={[["all", "كل الحالات"], ["sent", "مرسلة"], ["scheduled", "مجدولة"], ["failed", "فشلت"]]} /><Choice value={filters.type} set={(v) => setFilter("type", v)} items={[["all", "كل الأنواع"], ["info", "معلومة"], ["alert", "تنبيه"], ["system_alert", "نظام"], ["reminder", "تذكير"]]} /><Button variant="outline" onClick={() => { setFilters(defaultFilters); setPage(1); }}><RotateCcw className="w-3.5 h-3.5" />مسح</Button></div>
-        <div className="divide-y divide-border/10">{campaignsQuery.isLoading ? <p className="p-8 text-center text-sm text-muted-foreground">جاري تحميل السجل...</p> : campaigns.length ? campaigns.map((campaign: any) => <div key={campaign._id} className="p-4"><div className="flex gap-3 justify-between"><div><p className="text-sm font-bold">{campaign.title}</p><p className="text-xs text-muted-foreground mt-1">{campaign.body}</p><div className="flex flex-wrap gap-2 mt-3"><Badge variant="outline">{audienceLabels[campaign.audience] || campaign.audience}</Badge><Badge variant="outline">{statusLabels[campaign.deliveryStatus] || campaign.deliveryStatus}</Badge><Badge variant="outline"><Users className="w-3 h-3" />{campaign.recipients} مستهدف</Badge><Badge variant="outline">قرأها {campaign.readCount}</Badge></div></div><span className="text-[10px] text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(campaign.scheduledAt || campaign.sentAt || campaign.createdAt), { locale: ar, addSuffix: true })}</span></div></div>) : <p className="p-10 text-center text-sm text-muted-foreground">لا توجد حملات إدارية بعد</p>}</div>
-        <div className="p-3 flex justify-between text-xs text-muted-foreground border-t border-border/20"><span>{pagination.total} حملة</span><div className="flex gap-2 items-center"><Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>السابق</Button><span>{page} / {pagination.pages}</span><Button size="sm" variant="outline" disabled={page >= pagination.pages} onClick={() => setPage((p) => p + 1)}>التالي</Button></div></div>
+        <div className="p-3 grid gap-2 md:grid-cols-6 border-b border-border/20"><div className="relative md:col-span-2"><Search className="absolute start-3 top-2.5 w-3.5 h-3.5 text-muted-foreground" /><Input className="ps-9" placeholder="بحث بالعنوان أو المحتوى..." value={filters.search} onChange={(e) => setFilter("search", e.target.value)} /></div><Choice label="الجمهور" value={filters.audience} set={(v) => setFilter("audience", v)} items={[["all", "كل الجماهير"], ["users", "العملاء"], ["premium", "Premium"], ["providers", "المزودون"]]} /><Choice label="الحالة" value={filters.status} set={(v) => setFilter("status", v)} items={[["all", "كل الحالات"], ["sent", "مرسلة"], ["scheduled", "مجدولة"], ["failed", "فشلت"]]} /><Choice label="النوع" value={filters.type} set={(v) => setFilter("type", v)} items={[["all", "كل الأنواع"], ["info", "معلومة"], ["alert", "تنبيه"], ["system_alert", "نظام"], ["reminder", "تذكير"]]} /><Button variant="outline" onClick={() => { setFilters(defaultFilters); setPage(1); }}><RotateCcw className="w-3.5 h-3.5" />مسح</Button></div>
+        <div className="divide-y divide-border/10">{campaignsQuery.isLoading ? <p className="p-8 text-center text-sm text-muted-foreground">جاري تحميل السجل...</p> : campaignsQuery.isError ? <p className="p-10 text-center text-sm text-danger">تعذر تحميل سجل حملات الإشعارات. تحقق من صلاحيات الحساب أو اتصال الخادم.</p> : campaigns.length ? campaigns.map((campaign: any) => <div key={campaign._id} className="p-4"><div className="flex gap-3 justify-between"><div><p className="text-sm font-bold">{campaign.title}</p><p className="text-xs text-muted-foreground mt-1">{campaign.body}</p><div className="flex flex-wrap gap-2 mt-3"><Badge variant="outline">{audienceLabels[campaign.audience] || campaign.audience}</Badge><Badge variant="outline">{statusLabels[campaign.deliveryStatus] || campaign.deliveryStatus}</Badge><Badge variant="outline"><Users className="w-3 h-3" />{campaign.recipients} مستهدف</Badge><Badge variant="outline">قرأها {campaign.readCount}</Badge></div></div><span className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(campaign.scheduledAt || campaign.sentAt || campaign.createdAt), { locale: ar, addSuffix: true })}</span></div></div>) : <p className="p-10 text-center text-sm text-muted-foreground">لا توجد حملات إدارية بعد</p>}</div>
+        <TablePagination
+          page={page}
+          totalPages={Number(pagination.pages || 1)}
+          total={Number(pagination.total || 0)}
+          shown={campaigns.length}
+          unit="حملة"
+          onPageChange={(next) => setPage(() => next)}
+        />
       </Card>
     </div>
   </div>;
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-1.5"><Label className="text-xs text-muted-foreground">{label}</Label>{children}</div>; }
-function Choice({ value, set, items }: { value: string; set: (value: string) => void; items: string[][] }) { return <Select value={value} onValueChange={(next) => set(next || items[0][0])}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{items.map(([key, label]) => <SelectItem key={key} value={key}>{label}</SelectItem>)}</SelectContent></Select>; }
+/**
+ * Label + control. The <Label> previously carried no `htmlFor` and the control
+ * no `id`, so the pair was only visually associated — the field reached the
+ * accessibility tree unnamed. The id is generated here and cloned onto the
+ * child, so every Field is associated without callers doing anything.
+ */
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  const id = React.useId();
+  // Some Fields hold the control plus a sibling (e.g. a character counter), so
+  // `children` is an array and isValidElement is false for it. Clone the first
+  // element child — the control — rather than requiring a single child.
+  let applied = false;
+  const child = React.Children.map(children, (c) => {
+    if (!applied && React.isValidElement(c)) {
+      applied = true;
+      return React.cloneElement(c as React.ReactElement<{ id?: string }>, { id });
+    }
+    return c;
+  });
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id} className="text-xs text-muted-foreground">{label}</Label>
+      {child}
+    </div>
+  );
+}
+function Choice({ label, value, set, items }: { label?: string; value: string; set: (value: string) => void; items: string[][] }) {
+  const selected = items.find(([key]) => key === value)?.[1] ?? value;
+  return <Select value={value} onValueChange={(next) => set(next || items[0][0])}><SelectTrigger>{label ? <FilterSelectValue label={label} value={selected} /> : <span data-slot="select-value" className="flex min-w-0 flex-1 items-center text-start text-xs font-semibold text-foreground">{selected}</span>}</SelectTrigger><SelectContent>{items.map(([key, itemLabel]) => <SelectItem key={key} value={key}>{itemLabel}</SelectItem>)}</SelectContent></Select>;
+}

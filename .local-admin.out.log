@@ -1,0 +1,13 @@
+
+> car-hero-admin@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.4 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://10.2.0.2:3000
+- Environments: .env.local
+✓ Ready in 1398ms
+Creating turbopack project { dir: 'E:\\all_project\\CarHero\\car-hero-admin', testMode: true }
+
+ GET /login 200 in 1271ms (next.js: 300ms, proxy.ts: 13ms, application-code: 958ms)
+[?25h

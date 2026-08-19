@@ -1,8 +1,0 @@
-"use client";
-import dynamic from "next/dynamic"; import { Wrench } from "lucide-react"; import { Card } from "@/components/ui/card";
-const ReactECharts=dynamic(()=>import("echarts-for-react"),{ssr:false}); const names:Record<string,string>={towing:"سطحة / سحب",tire:"إطارات",battery:"بطارية",fuel:"وقود",locksmith:"فتح أقفال",mechanical:"ميكانيك",electrical:"كهرباء"};
-export function AiServicePerformance({isLoading,servicePerformance}:{isLoading:boolean;servicePerformance:{serviceCategory:string;successRequests:number;failedRequests:number}[]}) {
- const option={tooltip:{trigger:"axis"},legend:{data:["ناجحة","فاشلة"],textStyle:{color:"#94a3b8"}},grid:{top:35,right:15,bottom:20,left:15,containLabel:true},xAxis:{type:"value"},yAxis:{type:"category",data:servicePerformance.map(x=>names[x.serviceCategory]??x.serviceCategory)},series:[{name:"ناجحة",type:"bar",stack:"all",data:servicePerformance.map(x=>x.successRequests),itemStyle:{color:"#8b5cf6"}},{name:"فاشلة",type:"bar",stack:"all",data:servicePerformance.map(x=>x.failedRequests),itemStyle:{color:"#ef4444"}}]};
- return <Card className="p-5"><h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-white"><Wrench className="h-4 w-4 text-violet-400"/> الأداء حسب الخدمة</h3><div className="h-[250px]">{isLoading?<Empty text="جاري التحميل..."/>:servicePerformance.length?<ReactECharts option={option} style={{height:"100%"}}/>:<Empty text="لا توجد بيانات مطابقة للفلاتر"/>}</div></Card>;
-}
-function Empty({text}:{text:string}){return <div className="flex h-full items-center justify-center text-xs text-muted-foreground">{text}</div>}

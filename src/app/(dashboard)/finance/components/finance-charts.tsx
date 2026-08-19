@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { BarChart2, TrendingUp } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { useChartTheme } from "@/application/hooks/use-chart-theme";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
@@ -21,13 +22,6 @@ interface FinanceChartsProps {
   transactions?: FinanceChartTransaction[];
 }
 
-const tooltipStyle = {
-  backgroundColor: "rgba(13, 9, 22, 0.97)",
-  borderColor: "rgba(143,92,177,0.35)",
-  borderWidth: 1,
-  padding: [12, 16] as [number, number],
-  textStyle: { color: "#cbd5e1", fontSize: 12, fontFamily: "IBM Plex Sans Arabic" },
-};
 
 const formatDay = (value: string | Date | undefined) => {
   const date = value ? new Date(value) : null;
@@ -36,6 +30,8 @@ const formatDay = (value: string | Date | undefined) => {
 };
 
 export default function FinanceCharts({ type, transactions = [] }: FinanceChartsProps) {
+  const chartTheme = useChartTheme();
+  const tooltipStyle = chartTheme.tooltip;
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => setIsMounted(true), []);
 
@@ -77,21 +73,21 @@ export default function FinanceCharts({ type, transactions = [] }: FinanceCharts
         const rows = params
           .map(
             (p) => `<div style="display:flex;justify-content:space-between;gap:24px;margin-bottom:5px">
-              <span style="display:flex;align-items:center;gap:6px;color:#94a3b8">
+              <span style="display:flex;align-items:center;gap:6px;color:${chartTheme.colors.muted}">
                 <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color}"></span>${p.seriesName}
               </span>
-              <b style="color:#f5f5f7">${Number(p.value || 0).toLocaleString("ar-SY")} ل.س</b>
+              <b style="color:${chartTheme.colors.text}">${Number(p.value || 0).toLocaleString("ar-SY")} ل.س</b>
             </div>`,
           )
           .join("");
-        return `<div style="min-width:180px"><b style="color:#f5f5f7;display:block;margin-bottom:8px">${params[0]?.axisValue || ""}</b>${rows}</div>`;
+        return `<div style="min-width:180px"><b style="color:${chartTheme.colors.text};display:block;margin-bottom:8px">${params[0]?.axisValue || ""}</b>${rows}</div>`;
       },
     },
     legend: {
       data: type === "overview" ? ["إيرادات الطلبات", "عمولة المنصة", "مدفوعات المزودين"] : ["عمولة المنصة", "مدفوعات المزودين"],
       right: 0,
       top: 0,
-      textStyle: { color: "#94a3b8", fontSize: 11, fontFamily: "IBM Plex Sans Arabic" },
+      textStyle: { color: chartTheme.colors.muted, fontSize: 11 },
       icon: "circle",
       itemWidth: 8,
       itemHeight: 8,
@@ -100,27 +96,27 @@ export default function FinanceCharts({ type, transactions = [] }: FinanceCharts
     xAxis: {
       type: "category",
       data: series.map((d) => d.day),
-      axisLabel: { color: "#64748b", fontSize: 10, fontFamily: "IBM Plex Sans Arabic" },
+      axisLabel: { ...chartTheme.axisLabel, fontSize: 10 },
       axisLine: { lineStyle: { color: "rgba(255,255,255,0.04)" } },
       axisTick: { show: false },
     },
     yAxis: {
       type: "value",
-      axisLabel: { color: "#64748b", fontSize: 10, formatter: (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v) },
-      splitLine: { lineStyle: { color: "rgba(143,92,177,0.06)", type: "dashed" } },
+      axisLabel: { ...chartTheme.axisLabel, fontSize: 10, formatter: (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v) },
+      splitLine: chartTheme.splitLine,
       axisLine: { show: false },
       axisTick: { show: false },
     },
     series:
       type === "overview"
         ? [
-            { name: "إيرادات الطلبات", type: "line", smooth: 0.45, showSymbol: false, data: series.map((d) => d.revenue), lineStyle: { color: "#a57ed8", width: 3 }, itemStyle: { color: "#a57ed8" } },
-            { name: "عمولة المنصة", type: "line", smooth: 0.45, showSymbol: false, data: series.map((d) => d.commissions), lineStyle: { color: "#10b981", width: 2.5 }, itemStyle: { color: "#10b981" } },
-            { name: "مدفوعات المزودين", type: "bar", data: series.map((d) => d.payouts), barMaxWidth: 18, itemStyle: { color: "#f97316", borderRadius: [4, 4, 0, 0] } },
+            { name: "إيرادات الطلبات", type: "line", smooth: 0.45, showSymbol: false, data: series.map((d) => d.revenue), lineStyle: { color: chartTheme.colors.primary, width: 3 }, itemStyle: { color: chartTheme.colors.primary } },
+            { name: "عمولة المنصة", type: "line", smooth: 0.45, showSymbol: false, data: series.map((d) => d.commissions), lineStyle: { color: chartTheme.colors.success, width: 2.5 }, itemStyle: { color: chartTheme.colors.success } },
+            { name: "مدفوعات المزودين", type: "bar", data: series.map((d) => d.payouts), barMaxWidth: 18, itemStyle: { color: chartTheme.colors.warning, borderRadius: [4, 4, 0, 0] } },
           ]
         : [
-            { name: "عمولة المنصة", type: "bar", stack: "flow", data: series.map((d) => d.commissions), barMaxWidth: 22, itemStyle: { color: "#10b981" } },
-            { name: "مدفوعات المزودين", type: "bar", stack: "flow", data: series.map((d) => d.payouts), barMaxWidth: 22, itemStyle: { color: "#f97316", borderRadius: [4, 4, 0, 0] } },
+            { name: "عمولة المنصة", type: "bar", stack: "flow", data: series.map((d) => d.commissions), barMaxWidth: 22, itemStyle: { color: chartTheme.colors.success } },
+            { name: "مدفوعات المزودين", type: "bar", stack: "flow", data: series.map((d) => d.payouts), barMaxWidth: 22, itemStyle: { color: chartTheme.colors.warning, borderRadius: [4, 4, 0, 0] } },
           ],
   };
 
@@ -132,18 +128,18 @@ export default function FinanceCharts({ type, transactions = [] }: FinanceCharts
       <div className="flex items-center justify-between mb-5 gap-3">
         <div>
           <h3 className="font-semibold text-white text-sm tracking-tight flex items-center gap-2">
-            {type === "overview" ? <TrendingUp className="w-4 h-4 text-violet-400" /> : <BarChart2 className="w-4 h-4 text-emerald-400" />}
+            {type === "overview" ? <TrendingUp className="w-4 h-4 text-info" /> : <BarChart2 className="w-4 h-4 text-success" />}
             {title}
           </h3>
-          <p className="text-[11px] text-muted-foreground mt-0.5">مبني على العمليات المطابقة للفلاتر الزمنية الحالية.</p>
+          <p className="text-xs text-muted-foreground mt-0.5">مبني على العمليات المطابقة للفلاتر الزمنية الحالية.</p>
         </div>
-        <span className="px-2.5 py-1 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-300 text-[10px] font-bold">
+        <span className="px-2.5 py-1 rounded-lg bg-violet-500/10 border border-violet-500/20 text-info text-xs font-bold">
           {total.toLocaleString("ar-SY")} ل.س
         </span>
       </div>
       {isMounted ? (
         series.length ? (
-          <ReactECharts option={option} style={{ height: 320, width: "100%" }} opts={{ renderer: "canvas" }} notMerge lazyUpdate />
+          <ReactECharts key={chartTheme.key} option={option} style={{ height: 320, width: "100%" }} opts={{ renderer: "canvas" }} notMerge lazyUpdate />
         ) : (
           <div className="h-[320px] flex items-center justify-center text-muted-foreground text-sm">لا توجد عمليات مالية ضمن النطاق الحالي</div>
         )

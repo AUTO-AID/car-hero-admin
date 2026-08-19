@@ -59,7 +59,7 @@ export function ProvidersKpiCards({ kpis = [], isLoading = false }: ProvidersKpi
 
   if (kpis.length === 0) {
     return (
-      <Card className="p-5 bg-card border-border/40 text-sm text-muted-foreground">
+      <Card className="p-6 bg-card border-border/40 text-sm text-muted-foreground">
         لا توجد بيانات KPI متاحة من الخادم حالياً.
       </Card>
     );
@@ -72,7 +72,7 @@ export function ProvidersKpiCards({ kpis = [], isLoading = false }: ProvidersKpi
         const clr = colorMap[kpi.color] || "#a57ed8";
         return (
           <Card key={kpi.label} className="stat-card card-hover p-4 bg-card border-border/40 relative overflow-hidden group">
-            <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-xl transition-all duration-300" style={{ background: clr }} />
+            <div className="absolute top-0 end-0 start-0 h-[2px] rounded-t-xl transition-all duration-300" style={{ background: clr }} />
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
               style={{ background: `radial-gradient(ellipse at top left, ${clr}08, transparent 70%)` }} />
             <div className="flex items-center gap-2 mb-3">
@@ -82,8 +82,8 @@ export function ProvidersKpiCards({ kpis = [], isLoading = false }: ProvidersKpi
               </div>
             </div>
             <p className="text-xl font-bold text-white tabular-nums">{kpi.value}</p>
-            <p className="text-[11px] font-medium text-muted-foreground mt-0.5">{kpi.label}</p>
-            <p className="text-[10px] text-muted-foreground/50 mt-0.5">{kpi.sub}</p>
+            <p className="text-xs font-semibold text-muted-foreground mt-0.5">{kpi.label}</p>
+            <p className="text-xs text-muted-foreground/50 mt-0.5">{kpi.sub}</p>
           </Card>
         );
       })}

@@ -8,25 +8,55 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FilterSelectValue, Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createService, deleteService, getAllServices, updateService, type ServiceFilters } from "@/infrastructure/services/services.service";
 import { Service } from "@/domain/entities/service.types";
 import { ServicesStats } from "./components/services-stats";
 import { ServiceDialog } from "./components/service-dialog";
 import { ServicesList } from "./components/services-list";
+import { useDebouncedValue } from "@/application/hooks/use-debounced-value";
 
 export const categoryMeta: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
-  roadside_assistance: { label: "مساعدة الطريق", color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/20", icon: ShieldAlert },
-  towing: { label: "سطحة / سحب", color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20", icon: Car },
-  battery: { label: "بطارية", color: "text-purple-400", bg: "bg-purple-500/10 border-purple-500/20", icon: Battery },
-  tire: { label: "إطارات", color: "text-rose-400", bg: "bg-rose-500/10 border-rose-500/20", icon: Wrench },
-  fuel: { label: "وقود", color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20", icon: Fuel },
-  lockout: { label: "فتح أقفال", color: "text-cyan-400", bg: "bg-cyan-500/10 border-cyan-500/20", icon: KeyRound },
-  maintenance: { label: "صيانة", color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", icon: Settings2 },
-  car_wash: { label: "غسيل", color: "text-sky-400", bg: "bg-sky-500/10 border-sky-500/20", icon: Car },
-  other: { label: "أخرى", color: "text-slate-400", bg: "bg-slate-500/10 border-slate-500/20", icon: Zap },
+  roadside_assistance: { label: "مساعدة الطريق", color: "text-info", bg: "bg-violet-500/10 border-violet-500/20", icon: ShieldAlert },
+  towing: { label: "سطحة / سحب", color: "text-info", bg: "bg-blue-500/10 border-blue-500/20", icon: Car },
+  battery: { label: "بطارية", color: "text-info", bg: "bg-purple-500/10 border-purple-500/20", icon: Battery },
+  tire: { label: "إطارات", color: "text-danger", bg: "bg-rose-500/10 border-rose-500/20", icon: Wrench },
+  fuel: { label: "وقود", color: "text-warning", bg: "bg-amber-500/10 border-amber-500/20", icon: Fuel },
+  lockout: { label: "فتح أقفال", color: "text-info", bg: "bg-cyan-500/10 border-cyan-500/20", icon: KeyRound },
+  maintenance: { label: "صيانة", color: "text-success", bg: "bg-emerald-500/10 border-emerald-500/20", icon: Settings2 },
+  car_wash: { label: "غسيل", color: "text-info", bg: "bg-sky-500/10 border-sky-500/20", icon: Car },
+  other: { label: "أخرى", color: "text-muted-foreground", bg: "bg-slate-500/10 border-slate-500/20", icon: Zap },
 };
+
+const activeLabels: Record<string, string> = {
+  all: "كل الحالات",
+  true: "نشطة",
+  false: "موقوفة",
+};
+
+const emergencyLabels: Record<string, string> = {
+  all: "كل الأنواع",
+  true: "طارئة",
+  false: "عادية",
+};
+
+const serviceSortByLabels: Record<string, string> = {
+  sortOrder: "ترتيب الظهور",
+  name: "الاسم",
+  price: "السعر",
+  duration: "المدة",
+  usage: "الاستخدام",
+  revenue: "الإيراد",
+};
+
+const sortOrderLabels: Record<string, string> = {
+  asc: "تصاعدي",
+  desc: "تنازلي",
+};
+
+const serviceCategoryLabel = (value: string) =>
+  value === "all" ? "كل التصنيفات" : categoryMeta[value]?.label ?? value;
 
 function unwrapServices(payload: any) {
   const container = payload?.data ?? payload;
@@ -57,6 +87,7 @@ export default function ServicesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Service | null>(null);
+  const debouncedSearch = useDebouncedValue(search, 350);
   const [filters, setFilters] = useState({
     category: "all",
     isActive: "all",
@@ -67,10 +98,10 @@ export default function ServicesPage() {
 
   const queryFilters: ServiceFilters = useMemo(
     () => ({
-      search: search.trim(),
+      search: debouncedSearch.trim(),
       ...filters,
     }),
-    [filters, search],
+    [debouncedSearch, filters],
   );
 
   const { data, isLoading, isError } = useQuery({
@@ -158,17 +189,17 @@ export default function ServicesPage() {
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div>
-                <h2 className="text-base font-bold text-white tracking-tight">إدارة الخدمات والتسعير</h2>
-                <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+                <h2 className="text-base font-bold text-foreground tracking-tight">إدارة الخدمات والتسعير</h2>
+                <p className="text-xs text-muted-foreground mt-0.5 font-semibold">
                   إدارة كتالوج الخدمات الأساسي وربطه بإحصاءات الطلبات الفعلية.
                 </p>
               </div>
 
               <TabsList className="flex h-auto gap-1 rounded-xl border border-border/40 bg-secondary/30 p-1">
-                <TabsTrigger value="list" className="rounded-lg px-4 py-1.5 text-xs transition-all data-[state=active]:bg-card text-white">
+                <TabsTrigger value="list" className="rounded-lg px-4 py-1.5 text-xs transition-all data-[state=active]:bg-card">
                   قائمة الخدمات
                 </TabsTrigger>
-                <TabsTrigger value="stats" className="rounded-lg px-4 py-1.5 text-xs transition-all data-[state=active]:bg-card text-white">
+                <TabsTrigger value="stats" className="rounded-lg px-4 py-1.5 text-xs transition-all data-[state=active]:bg-card">
                   إحصائيات الخدمات
                 </TabsTrigger>
               </TabsList>
@@ -180,7 +211,7 @@ export default function ServicesPage() {
                   <Download className="w-4 h-4" />
                   تصدير
                 </Button>
-                <Button onClick={openCreate} className="gap-2 bg-primary hover:bg-primary/90 text-white font-bold shadow-lg shadow-primary/20">
+                <Button onClick={openCreate} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20">
                   <Plus className="w-4 h-4" /> إضافة خدمة
                 </Button>
               </div>
@@ -188,19 +219,19 @@ export default function ServicesPage() {
           </div>
 
           <TabsContent value="list" className="m-0 border-0 p-0 bg-transparent">
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-2">
               <div className="relative">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/40 pointer-events-none" />
+                <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60 pointer-events-none" />
                 <Input
                   placeholder="ابحث عن اسم الخدمة..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="bg-background/80 border-border/40 text-xs h-9 pr-9 rounded-lg"
+                  className="bg-background/80 border-border/40 text-xs h-9 ps-9 rounded-lg"
                 />
               </div>
               <Select value={filters.category} onValueChange={(value) => setFilter("category", value || "all")}>
                 <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs">
-                  <SelectValue placeholder="التصنيف" />
+                  <FilterSelectValue label="التصنيف" value={serviceCategoryLabel(filters.category)} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">كل التصنيفات</SelectItem>
@@ -210,7 +241,9 @@ export default function ServicesPage() {
                 </SelectContent>
               </Select>
               <Select value={filters.isActive} onValueChange={(value) => setFilter("isActive", value || "all")}>
-                <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs">
+                  <FilterSelectValue label="الحالة" value={activeLabels[filters.isActive] ?? filters.isActive} />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">كل الحالات</SelectItem>
                   <SelectItem value="true">نشطة</SelectItem>
@@ -218,7 +251,9 @@ export default function ServicesPage() {
                 </SelectContent>
               </Select>
               <Select value={filters.isEmergency} onValueChange={(value) => setFilter("isEmergency", value || "all")}>
-                <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs">
+                  <FilterSelectValue label="النوع" value={emergencyLabels[filters.isEmergency] ?? filters.isEmergency} />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">كل الأنواع</SelectItem>
                   <SelectItem value="true">طارئة</SelectItem>
@@ -227,8 +262,11 @@ export default function ServicesPage() {
               </Select>
               <Select value={filters.sortBy} onValueChange={(value) => setFilter("sortBy", value || "sortOrder")}>
                 <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs">
-                  <SlidersHorizontal className="w-3 h-3 ml-2 text-muted-foreground" />
-                  <SelectValue />
+                  <FilterSelectValue
+                    label="الفرز"
+                    value={serviceSortByLabels[filters.sortBy] ?? filters.sortBy}
+                    icon={<SlidersHorizontal className="w-3 h-3 text-muted-foreground" />}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="sortOrder">ترتيب الظهور</SelectItem>
@@ -240,7 +278,9 @@ export default function ServicesPage() {
                 </SelectContent>
               </Select>
               <Select value={filters.sortOrder} onValueChange={(value) => setFilter("sortOrder", value === "desc" ? "desc" : "asc")}>
-                <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs">
+                  <FilterSelectValue label="الاتجاه" value={sortOrderLabels[filters.sortOrder]} />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="asc">تصاعدي</SelectItem>
                   <SelectItem value="desc">تنازلي</SelectItem>
@@ -252,7 +292,7 @@ export default function ServicesPage() {
 
         <TabsContent value="list" className="m-0 border-0 p-0 bg-transparent space-y-6 focus-visible:outline-none">
           {isError ? (
-            <Card className="p-8 bg-card/60 border-border/40 text-center text-rose-400">تعذر تحميل الخدمات من الخادم</Card>
+            <Card className="p-8 bg-card/60 border-border/40 text-center text-danger">تعذر تحميل الخدمات من الخادم</Card>
           ) : (
             <ServicesList
               services={services}
@@ -282,8 +322,8 @@ export default function ServicesPage() {
       <Dialog open={Boolean(deleteId)} onOpenChange={(open) => !open && setDeleteId(null)}>
         <DialogContent className="bg-card border-border/50 rounded-2xl max-w-sm" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="text-white text-sm font-bold flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-500" />
+            <DialogTitle className="text-foreground text-sm font-bold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-danger" />
               إيقاف الخدمة
             </DialogTitle>
           </DialogHeader>

@@ -49,29 +49,33 @@ export default function LoginPage() {
           <img
             src="/logo_carHero.png"
             alt="Car Hero"
-            className="mx-auto mb-4 h-auto w-[220px] object-contain drop-shadow-[0_10px_28px_rgba(143,92,177,0.35)]"
+            className="mx-auto mb-4 h-auto w-[220px] object-contain drop-shadow-[0_10px_28px_rgba(212,175,55,0.24)]"
           />
-          <p className="mt-2 text-sm text-muted-foreground">تسجيل دخول لوحة الإدارة</p>
+          <div className="mx-auto mt-3 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-bold tracking-wide text-primary">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            ADMIN COMMAND CENTER
+          </div>
+          <p className="mt-3 text-sm text-muted-foreground" dir="auto">تسجيل دخول لوحة الإدارة</p>
         </div>
 
-        <div className="glass-strong rounded-xl p-7 shadow-2xl shadow-black/20">
+        <div className="glass-strong rounded-xl border-primary/20 p-7 shadow-2xl shadow-black/30">
           <div className="mb-6 flex items-center gap-2 border-b border-border/30 pb-4">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
               <ShieldCheck className="h-4 w-4 text-primary" />
             </span>
             <div>
-              <p className="text-sm font-semibold text-foreground">دخول المسؤولين فقط</p>
-              <p className="text-xs text-muted-foreground">يتم التحقق من حسابات جدول admins في الـ backend</p>
+              <p className="text-sm font-semibold text-foreground" dir="auto">دخول المسؤولين فقط</p>
+              <p className="text-xs text-muted-foreground" dir="auto">يتم التحقق من حسابات جدول admins في الـ backend</p>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-xs font-medium text-muted-foreground">
+              <Label htmlFor="email" className="text-xs font-semibold text-muted-foreground" dir="auto">
                 البريد الإلكتروني
               </Label>
               <div className="relative">
-                <Mail className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/55" />
+                <Mail className="absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/55" />
                 <Input
                   id="email"
                   type="email"
@@ -80,17 +84,17 @@ export default function LoginPage() {
                   placeholder="admin@carhero.com"
                   autoComplete="email"
                   dir="ltr"
-                  className="h-11 rounded-lg border-border/50 bg-secondary/60 pr-10 text-sm placeholder:text-muted-foreground/40"
+                  className="h-11 rounded-lg border-border/50 bg-secondary/60 ps-10 text-sm placeholder:text-muted-foreground/40"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-xs font-medium text-muted-foreground">
+              <Label htmlFor="password" className="text-xs font-semibold text-muted-foreground" dir="auto">
                 كلمة المرور
               </Label>
               <div className="relative">
-                <Lock className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/55" />
+                <Lock className="absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/55" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
@@ -104,7 +108,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((value) => !value)}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 rounded-md text-muted-foreground/55 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="absolute end-3.5 top-1/2 -translate-y-1/2 rounded-md text-muted-foreground/55 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -129,7 +133,7 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="mt-6 text-center text-[11px] text-muted-foreground/50">
+        <p className="mt-6 text-center text-xs text-muted-foreground/50" dir="ltr" suppressHydrationWarning>
           CarHero Admin Dashboard
         </p>
       </section>

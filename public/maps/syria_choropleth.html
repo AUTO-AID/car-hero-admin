@@ -35,14 +35,14 @@
         .city-marker {
             width: 10px;
             height: 10px;
-            background: #a78bfa;
+            background: #22d3ee;
             border: 2px solid rgba(255,255,255,0.9);
             border-radius: 50%;
-            box-shadow: 0 0 12px rgba(167, 139, 250, 0.7);
+            box-shadow: 0 0 12px rgba(34, 211, 238, 0.7);
             transition: all 0.3s ease;
         }
         .city-label {
-            color: rgba(220, 210, 240, 0.95);
+            color: rgba(200, 240, 255, 0.92);
             font-size: 11px;
             font-family: 'Segoe UI', Tahoma, sans-serif;
             font-weight: 500;
@@ -80,11 +80,11 @@
             font-size: 12px;
             color: rgba(255,255,255,0.7);
             z-index: 1000;
-            background: rgba(20,20,35,0.7);
+            background: rgba(12,17,23,0.85);
             backdrop-filter: blur(8px);
             padding: 10px 16px;
             border-radius: 10px;
-            border: 1px solid rgba(139,111,192,0.2);
+            border: 1px solid rgba(34,211,238,0.2);
         }
         
         @media (max-width: 480px) {
@@ -110,12 +110,12 @@
             border-radius: 50%;
         }
         .legend-dot.active { 
-            background: linear-gradient(135deg, #8b5fbf, #6a1b9a); 
+            background: linear-gradient(135deg, #67e8f9, #06b6d4); 
             box-shadow: 0 0 6px rgba(139,95,191,0.5);
         }
         .legend-dot.inactive { 
-            background: #e8e0f0; 
-            border: 1px solid rgba(139,111,192,0.3);
+            background: #151c23; 
+            border: 1px solid rgba(212, 175, 55,0.3);
         }
     </style>
 </head>
@@ -186,22 +186,22 @@
         var vmin = 33;
         var vmax = 500;
         
-        // Purple gradient color scale
+        // Cyan intensity scale — brighter = more providers
         function getColor(value) {
             if (value === 0) {
-                // Soft purple-gray for non-serviced areas
-                return '#ede7f6';
+                // Dark muted for non-serviced areas
+                return '#151c23';
             }
             
             var normalized = Math.min(1, Math.max(0, (value - vmin) / (vmax - vmin)));
             
-            // Purple gradient: light to dark
+            // Cyan intensity: muted dark → vivid bright (more providers = brighter)
             var colors = [
-                [209, 179, 232],  // #d1b3e8 - lightest active
-                [179, 136, 212],  // #b388d4
-                [149, 107, 191],  // #956bbf
-                [119, 67, 168],   // #7743a8
-                [89, 27, 145]     // #591b91 - darkest
+                [22, 78, 99],     // #164e63 - deep dark cyan (fewest)
+                [14, 116, 144],   // #0e7490 - medium cyan
+                [6, 182, 212],    // #06b6d4 - bright cyan
+                [34, 211, 238],   // #22d3ee - vivid cyan
+                [103, 232, 249]   // #67e8f9 - electric cyan (most providers)
             ];
             
             var idx = normalized * (colors.length - 1);
@@ -222,10 +222,10 @@
             
             return {
                 fillColor: getColor(value),
-                weight: isActive ? 1.5 : 1,
-                opacity: isActive ? 0.8 : 0.5,
-                color: isActive ? '#a78bfa' : '#c5b8d9',
-                fillOpacity: isActive ? 0.85 : 0.6
+                weight: 1.5,
+                opacity: 1,
+                color: '#0c1117',
+                fillOpacity: isActive ? 0.88 : 0.5
             };
         }
         
@@ -237,7 +237,7 @@
                 weight: 3,
                 color: '#ffffff',
                 fillOpacity: 0.95,
-                fillColor: isActive ? getColor(value) : '#e8e0f0'
+                fillColor: isActive ? getColor(value) : '#1e2a35'
             };
         }
         
@@ -246,10 +246,10 @@
             var isActive = value > 0;
             
             return {
-                weight: 4,
-                color: '#ffffff',
+                weight: 3,
+                color: '#67e8f9',
                 fillOpacity: 1,
-                fillColor: isActive ? getColor(value) : '#ddd5eb'
+                fillColor: isActive ? getColor(value) : '#1e2a35'
             };
         }
         

@@ -1,8 +1,15 @@
 "use client";
 
 import { createContext, ReactNode, useContext, useState } from "react";
-import { api } from "@/infrastructure/api/client";
 import { Admin, AuthContextType } from "@/domain/entities/auth.types";
+import { adminLogin, adminLogout } from "@/infrastructure/services/auth.service";
+import {
+  clearStoredSession,
+  getAccessToken,
+  getStoredAdmin,
+  normalizeAdmin,
+  storeSession,
+} from "@/infrastructure/auth/admin-session";
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -14,9 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const trimmedEmail = email.trim().toLowerCase();
 
-    const res = await api.post("/admin/login", { email: trimmedEmail, password });
-    const payload = res.data?.data ?? res.data;
-    const { accessToken, refreshToken, admin: rawAdmin } = payload ?? {};
+    const { accessToken, refreshToken, admin: rawAdmin } = await adminLogin({ email: trimmedEmail, password });
     const adminData = normalizeAdmin(rawAdmin);
 
     const normalizedRole = adminData?.role?.toLowerCase();
@@ -32,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    api.post("/admin/logout").catch(() => {});
+    adminLogout().catch(() => {});
     clearStoredSession();
     setAdmin(null);
     setToken(null);
@@ -52,52 +57,6 @@ export const useAuth = () => {
   return ctx;
 };
 
-function normalizeAdmin(admin: Admin | null | undefined): Admin | null {
-  if (!admin) return null;
-
-  const id = admin._id ?? admin.id;
-  return {
-    ...admin,
-    _id: id,
-    id,
-    permissions: admin.permissions ?? [],
-  };
-}
-
-function clearStoredSession() {
-  if (typeof window === "undefined") return;
-
-  localStorage.removeItem("admin_access_token");
-  localStorage.removeItem("admin_refresh_token");
-  localStorage.removeItem("admin_data");
-  
-  document.cookie = "admin_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-}
-
-function storeSession(accessToken: string, refreshToken: string, adminData: Admin) {
-  localStorage.setItem("admin_access_token", accessToken);
-  localStorage.setItem("admin_refresh_token", refreshToken);
-  localStorage.setItem("admin_data", JSON.stringify(adminData));
-
-  document.cookie = `admin_access_token=${accessToken}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax`;
-}
-
 function getStoredToken() {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("admin_access_token");
-}
-
-function getStoredAdmin() {
-  if (typeof window === "undefined") return null;
-
-  const storedToken = localStorage.getItem("admin_access_token");
-  const storedAdmin = localStorage.getItem("admin_data");
-  if (!storedToken || !storedAdmin) return null;
-
-  try {
-    return normalizeAdmin(JSON.parse(storedAdmin) as Admin);
-  } catch {
-    clearStoredSession();
-    return null;
-  }
+  return getAccessToken();
 }

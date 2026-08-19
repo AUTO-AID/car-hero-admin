@@ -2,17 +2,27 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+const variantClasses = {
+  default: "bg-card ring-1 ring-border/60 shadow-md",
+  stat: "bg-card ring-1 ring-border/60 shadow-md stat-card card-hover",
+  chart: "bg-card ring-1 ring-border/60 shadow-xl shadow-black/20 relative",
+  feed: "bg-card/60 backdrop-blur-xl ring-1 ring-border/60 shadow-xl shadow-black/20",
+}
+
 function Card({
   className,
   size = "default",
+  variant = "default",
   ...props
-}: React.ComponentProps<"div"> & { size?: "default" | "sm" }) {
+}: React.ComponentProps<"div"> & { size?: "default" | "sm"; variant?: "default" | "stat" | "chart" | "feed" }) {
   return (
     <div
       data-slot="card"
       data-size={size}
+      data-variant={variant}
       className={cn(
-        "group/card flex flex-col gap-4 overflow-hidden rounded-xl bg-card py-4 text-sm text-card-foreground ring-1 ring-foreground/10 has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",
+        "group/card flex flex-col gap-4 overflow-hidden rounded-xl py-4 text-sm text-card-foreground has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",
+        variantClasses[variant],
         className
       )}
       {...props}
@@ -38,7 +48,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-title"
       className={cn(
-        "font-heading text-base leading-snug font-medium group-data-[size=sm]/card:text-sm",
+        "font-heading text-base leading-snug font-semibold group-data-[size=sm]/card:text-sm",
         className
       )}
       {...props}

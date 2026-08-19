@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FilterSelectValue, Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   approvePayout,
@@ -20,6 +20,8 @@ import FinanceCharts from "./components/finance-charts";
 import FinanceStats from "./components/finance-stats";
 import PayoutRequests from "./components/payout-requests";
 import TransactionsTable, { type WalletTransaction } from "./components/transactions-table";
+import { queryKeys } from "@/infrastructure/query/query-keys";
+import { TablePagination } from "@/components/ui/table-pagination";
 
 const defaultFilters: Required<Pick<WalletTransactionFilters, "search" | "type" | "status" | "ownerType" | "referenceType" | "dateFrom" | "dateTo" | "amountMin" | "amountMax" | "sortBy" | "sortOrder">> = {
   search: "",
@@ -33,6 +35,55 @@ const defaultFilters: Required<Pick<WalletTransactionFilters, "search" | "type" 
   amountMax: "",
   sortBy: "createdAt",
   sortOrder: "desc",
+};
+
+const typeLabels: Record<string, string> = {
+  all: "كل الأنواع",
+  credit: "إيداع",
+  debit: "سحب",
+  refund: "استرداد",
+};
+
+const transactionStatusLabels: Record<string, string> = {
+  all: "كل الحالات",
+  pending: "معلق",
+  completed: "مكتمل",
+  failed: "فشل",
+  reversed: "معكوس",
+};
+
+const ownerTypeLabels: Record<string, string> = {
+  all: "كل المالكين",
+  user: "عملاء",
+  provider: "مزودون",
+  system: "النظام",
+};
+
+const referenceTypeLabels: Record<string, string> = {
+  all: "كل المراجع",
+  order: "طلبات",
+  topup: "شحن",
+  "payout,withdrawal": "سحوبات",
+  payout_reversal: "إرجاع سحب",
+};
+
+const financeSortByLabels: Record<string, string> = {
+  createdAt: "التاريخ",
+  amount: "المبلغ",
+  status: "الحالة",
+  type: "النوع",
+};
+
+const sortOrderLabels: Record<string, string> = {
+  desc: "تنازلي",
+  asc: "تصاعدي",
+};
+
+const payoutStatusLabels: Record<string, string> = {
+  pending: "طلبات معلقة",
+  completed: "منفذة",
+  failed: "مرفوضة",
+  all: "كل الطلبات",
 };
 
 const unwrapList = (payload: any) => {
@@ -85,18 +136,18 @@ export default function FinancePage() {
   const queryFilters = useMemo(() => ({ ...filters }), [filters]);
 
   const walletQuery = useQuery({
-    queryKey: ["platform-wallet"],
+    queryKey: queryKeys.finance.platformWallet,
     queryFn: getPlatformWallet,
     retry: false,
   });
 
   const transactionsQuery = useQuery({
-    queryKey: ["wallet-transactions", page, queryFilters],
+    queryKey: queryKeys.finance.transactions(page, queryFilters),
     queryFn: () => getAllTransactions(page, 15, queryFilters),
   });
 
   const chartQuery = useQuery({
-    queryKey: ["wallet-transactions-chart", queryFilters.dateFrom, queryFilters.dateTo],
+    queryKey: queryKeys.finance.transactionsChart(queryFilters.dateFrom, queryFilters.dateTo),
     queryFn: () => getAllTransactions(1, 500, {
       dateFrom: queryFilters.dateFrom,
       dateTo: queryFilters.dateTo,
@@ -106,7 +157,7 @@ export default function FinancePage() {
   });
 
   const payoutsQuery = useQuery({
-    queryKey: ["payout-requests", payoutPage, payoutStatus],
+    queryKey: queryKeys.finance.payouts(payoutPage, payoutStatus),
     queryFn: () => getPayoutRequests(payoutPage, 10, payoutStatus),
   });
 
@@ -132,10 +183,8 @@ export default function FinancePage() {
       return approvePayout(id, action, note);
     },
     onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({ queryKey: ["platform-wallet"] });
-      queryClient.invalidateQueries({ queryKey: ["wallet-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["wallet-transactions-chart"] });
-      queryClient.invalidateQueries({ queryKey: ["payout-requests"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.finance.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
       toast.success(vars.action === "complete" ? "تم تحويل الدفعة بنجاح" : "تم رفض طلب السحب وإرجاع المبلغ");
       setApprovingId(null);
     },
@@ -181,30 +230,32 @@ export default function FinancePage() {
           <TabsTrigger value="payouts" className="text-xs data-[state=active]:bg-card rounded-lg px-6 gap-2">
             طلبات السحب
             {wallet.pendingPayoutsCount > 0 && (
-              <span className="flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-amber-500 text-[10px] font-bold text-amber-950">
+              <span className="flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-amber-500 text-xs font-bold text-amber-950">
                 {wallet.pendingPayoutsCount}
               </span>
             )}
           </TabsTrigger>
         </TabsList>
 
-        <Card className="p-4 mb-6 bg-card border-border/40">
+        <Card className="p-6 mb-6 bg-card border-border/40">
           <div className="flex items-center gap-2 mb-3 text-xs font-bold text-white">
             <SlidersHorizontal className="w-4 h-4 text-primary" />
             فلاتر المحفظة
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-3">
             <div className="relative xl:col-span-2">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
               <Input
                 value={filters.search}
                 onChange={(event) => setFilter("search", event.target.value)}
                 placeholder="بحث بالعملية، المالك، الوصف أو المرجع..."
-                className="h-9 pr-9 bg-background/80 border-border/40 text-xs"
+                className="h-9 ps-9 bg-background/80 border-border/40 text-xs"
               />
             </div>
             <Select value={filters.type} onValueChange={(value) => setFilter("type", value || "all")}>
-              <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs">
+                <FilterSelectValue label="النوع" value={typeLabels[filters.type] ?? filters.type} />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">كل الأنواع</SelectItem>
                 <SelectItem value="credit">إيداع</SelectItem>
@@ -213,7 +264,9 @@ export default function FinancePage() {
               </SelectContent>
             </Select>
             <Select value={filters.status} onValueChange={(value) => setFilter("status", value || "all")}>
-              <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs">
+                <FilterSelectValue label="الحالة" value={transactionStatusLabels[filters.status] ?? filters.status} />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">كل الحالات</SelectItem>
                 <SelectItem value="pending">معلق</SelectItem>
@@ -223,7 +276,9 @@ export default function FinancePage() {
               </SelectContent>
             </Select>
             <Select value={filters.ownerType} onValueChange={(value) => setFilter("ownerType", value || "all")}>
-              <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs">
+                <FilterSelectValue label="المالك" value={ownerTypeLabels[filters.ownerType] ?? filters.ownerType} />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">كل المالكين</SelectItem>
                 <SelectItem value="user">عملاء</SelectItem>
@@ -232,7 +287,9 @@ export default function FinancePage() {
               </SelectContent>
             </Select>
             <Select value={filters.referenceType} onValueChange={(value) => setFilter("referenceType", value || "all")}>
-              <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs">
+                <FilterSelectValue label="المرجع" value={referenceTypeLabels[filters.referenceType] ?? filters.referenceType} />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">كل المراجع</SelectItem>
                 <SelectItem value="order">طلبات</SelectItem>
@@ -241,12 +298,14 @@ export default function FinancePage() {
                 <SelectItem value="payout_reversal">إرجاع سحب</SelectItem>
               </SelectContent>
             </Select>
-            <Input type="date" value={filters.dateFrom} onChange={(event) => setFilter("dateFrom", event.target.value)} className="h-9 bg-background/80 border-border/40 text-xs" />
-            <Input type="date" value={filters.dateTo} onChange={(event) => setFilter("dateTo", event.target.value)} className="h-9 bg-background/80 border-border/40 text-xs" />
+            <Input type="date" aria-label="من تاريخ" value={filters.dateFrom} onChange={(event) => setFilter("dateFrom", event.target.value)} className="h-9 bg-background/80 border-border/40 text-xs" />
+            <Input type="date" aria-label="إلى تاريخ" value={filters.dateTo} onChange={(event) => setFilter("dateTo", event.target.value)} className="h-9 bg-background/80 border-border/40 text-xs" />
             <Input value={filters.amountMin} onChange={(event) => setFilter("amountMin", event.target.value)} placeholder="أقل مبلغ" className="h-9 bg-background/80 border-border/40 text-xs" />
             <Input value={filters.amountMax} onChange={(event) => setFilter("amountMax", event.target.value)} placeholder="أعلى مبلغ" className="h-9 bg-background/80 border-border/40 text-xs" />
             <Select value={filters.sortBy} onValueChange={(value) => setFilter("sortBy", value || "createdAt")}>
-              <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs">
+                <FilterSelectValue label="الفرز" value={financeSortByLabels[filters.sortBy] ?? filters.sortBy} />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="createdAt">التاريخ</SelectItem>
                 <SelectItem value="amount">المبلغ</SelectItem>
@@ -255,7 +314,9 @@ export default function FinancePage() {
               </SelectContent>
             </Select>
             <Select value={filters.sortOrder} onValueChange={(value) => setFilter("sortOrder", (value || "desc") as "asc" | "desc")}>
-              <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-9 bg-background/80 border-border/40 text-xs">
+                <FilterSelectValue label="الاتجاه" value={sortOrderLabels[filters.sortOrder]} />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="desc">تنازلي</SelectItem>
                 <SelectItem value="asc">تصاعدي</SelectItem>
@@ -282,22 +343,24 @@ export default function FinancePage() {
 
         <TabsContent value="transactions" className="m-0 focus-visible:outline-none space-y-4">
           <TransactionsTable transactions={transactions} isLoading={transactionsQuery.isLoading} />
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
-            <p>يتم عرض {transactions.length.toLocaleString("ar-SY")} من أصل {Number(transactionsResult.total || 0).toLocaleString("ar-SY")} عملية</p>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1 || transactionsQuery.isFetching} onClick={() => setPage((p) => Math.max(1, p - 1))}>السابق</Button>
-              <span className="px-3 py-1 rounded-lg bg-secondary/40 text-white">
-                {page.toLocaleString("ar-SY")} / {Number(transactionsResult.pagination.totalPages || 1).toLocaleString("ar-SY")}
-              </span>
-              <Button variant="outline" size="sm" disabled={page >= transactionsResult.pagination.totalPages || transactionsQuery.isFetching} onClick={() => setPage((p) => p + 1)}>التالي</Button>
-            </div>
-          </div>
+          <TablePagination
+            page={page}
+            totalPages={Number(transactionsResult.pagination.totalPages || 1)}
+            total={Number(transactionsResult.total || 0)}
+            shown={transactions.length}
+            unit="عملية"
+            busy={transactionsQuery.isFetching}
+            onPageChange={(next) => setPage(() => next)}
+            className="border-t-0"
+          />
         </TabsContent>
 
         <TabsContent value="payouts" className="m-0 focus-visible:outline-none space-y-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <Select value={payoutStatus} onValueChange={(value) => { setPayoutStatus(value || "pending"); setPayoutPage(1); }}>
-              <SelectTrigger className="w-full sm:w-44 h-9 bg-background/80 border-border/40 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-56 h-9 bg-background/80 border-border/40 text-xs">
+                <FilterSelectValue label="السحوبات" value={payoutStatusLabels[payoutStatus] ?? payoutStatus} />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="pending">طلبات معلقة</SelectItem>
                 <SelectItem value="completed">منفذة</SelectItem>
@@ -316,16 +379,16 @@ export default function FinancePage() {
             isPending={payoutMut.isPending}
             isLoading={payoutsQuery.isLoading}
           />
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
-            <p>يتم عرض {payouts.length.toLocaleString("ar-SY")} من أصل {Number(payoutsResult.total || 0).toLocaleString("ar-SY")} طلب</p>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled={payoutPage <= 1 || payoutsQuery.isFetching} onClick={() => setPayoutPage((p) => Math.max(1, p - 1))}>السابق</Button>
-              <span className="px-3 py-1 rounded-lg bg-secondary/40 text-white">
-                {payoutPage.toLocaleString("ar-SY")} / {Number(payoutsResult.pagination.totalPages || 1).toLocaleString("ar-SY")}
-              </span>
-              <Button variant="outline" size="sm" disabled={payoutPage >= payoutsResult.pagination.totalPages || payoutsQuery.isFetching} onClick={() => setPayoutPage((p) => p + 1)}>التالي</Button>
-            </div>
-          </div>
+          <TablePagination
+            page={payoutPage}
+            totalPages={Number(payoutsResult.pagination.totalPages || 1)}
+            total={Number(payoutsResult.total || 0)}
+            shown={payouts.length}
+            unit="طلب سحب"
+            busy={payoutsQuery.isFetching}
+            onPageChange={(next) => setPayoutPage(() => next)}
+            className="border-t-0"
+          />
         </TabsContent>
       </Tabs>
     </div>
