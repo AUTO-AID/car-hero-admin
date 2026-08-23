@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import Link from "next/link";
+import { orderAmount } from "@/lib/order-amount";
 
 interface OverviewBookingsFeedProps {
   bookingsResponse: any;
@@ -55,7 +56,7 @@ export function OverviewBookingsFeed({ bookingsResponse, bookingsLoading }: Over
           ))
         ) : recentBookings.length > 0 ? (
           recentBookings.slice(0, 5).map((booking: any, i: number) => {
-            const amount = booking.payableAmount ?? booking.totalAmount ?? 0;
+            const amount = orderAmount(booking);
             const status = booking.status || "pending";
             const isPending = status === "pending";
             

@@ -4,6 +4,7 @@ import { Calendar, User, Wrench, Package, MapPin, Check, X } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Booking } from "@/domain/entities/booking.types";
+import { orderAmount, orderDiscount, orderGrossAmount } from "@/lib/order-amount";
 
 interface BookingDetailsDialogProps {
   booking: Booking | null;
@@ -112,11 +113,31 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
               </div>
             )}
             
-            <div className="flex items-center justify-between bg-secondary/20 rounded-xl p-3.5 border border-border/20">
-              <span className="text-xs text-muted-foreground font-semibold">المبلغ الإجمالي للرحلة</span>
-              <span className="text-base font-bold text-primary tabular-nums">
-                {(booking.totalAmount || booking.payableAmount || 0).toLocaleString("ar-SA")} ل.س
-              </span>
+            {/* المستحقّ هو الرقم البارز — وهو ما يراه العميل والفنّي. والخصم
+                يُعرض فوقه حين يوجد بدل أن يختفي الفرق بلا تفسير. */}
+            <div className="rounded-xl border border-border/20 bg-secondary/20 p-3.5 space-y-2">
+              {orderDiscount(booking) > 0 && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">الإجمالي قبل الخصم</span>
+                    <span className="text-xs text-foreground/70 tabular-nums">
+                      {orderGrossAmount(booking).toLocaleString("ar-SA")} ل.س
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">خصم نقاط الولاء</span>
+                    <span className="text-xs text-success tabular-nums">
+                      −{orderDiscount(booking).toLocaleString("ar-SA")} ل.س
+                    </span>
+                  </div>
+                </>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground font-semibold">المستحقّ على العميل</span>
+                <span className="text-base font-bold text-primary tabular-nums">
+                  {orderAmount(booking).toLocaleString("ar-SA")} ل.س
+                </span>
+              </div>
             </div>
           </div>
         )}

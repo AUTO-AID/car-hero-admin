@@ -61,6 +61,7 @@ import { queryKeys } from "@/infrastructure/query/query-keys";
 import { useDebouncedValue } from "@/application/hooks/use-debounced-value";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { OrderDetailsDialog } from "./components/order-details-dialog";
+import { orderAmount } from "@/lib/order-amount";
 
 const PAGE_SIZE = 10;
 
@@ -159,9 +160,8 @@ function unwrapOrders(payload: {
   };
 }
 
-function amount(order: OrderRecord) {
-  return Number(order.payableAmount ?? order.totalAmount ?? order.total ?? 0);
-}
+// نفس التعريف الذي تستعمله كل شاشة أخرى — انظر `lib/order-amount`
+const amount = orderAmount;
 
 function getCount(facets: { statusCounts?: Array<{ _id: string; count: number }> } | undefined, status: string) {
   return facets?.statusCounts?.find((item) => item._id === status)?.count ?? 0;

@@ -22,10 +22,11 @@ import {
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { OrderRecord } from "@/infrastructure/services/bookings.service";
+import { orderAmount } from "@/lib/order-amount";
 
 /** Payable amount with the same fallback chain the page uses. */
 function amount(order: OrderRecord) {
-  return Number(order.payableAmount ?? order.totalAmount ?? order.total ?? 0);
+  return orderAmount(order);
 }
 
 /**

@@ -13,6 +13,7 @@ import { ar } from "date-fns/locale";
 import { Booking } from "@/domain/entities/booking.types";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TablePagination } from "@/components/ui/table-pagination";
+import { orderAmount } from "@/lib/order-amount";
 
 interface BookingsTableProps {
   bookings: Booking[];
@@ -198,7 +199,7 @@ export function BookingsTable({
                       </td>
                       <td className="px-5 py-3.5">
                         <span className="text-xs font-bold text-foreground tabular-nums">
-                          {(booking.totalAmount || booking.payableAmount || 0).toLocaleString("ar-SA")} <span className="text-xs text-muted-foreground font-normal">ل.س</span>
+                          {orderAmount(booking).toLocaleString("ar-SA")} <span className="text-xs text-muted-foreground font-normal">ل.س</span>
                         </span>
                       </td>
                       <td className="px-5 py-3.5">
