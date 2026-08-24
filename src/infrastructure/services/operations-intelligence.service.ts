@@ -41,6 +41,18 @@ export type PressureArea = {
   cancelRate: number;
   unassignedRate: number;
   recentGrowthRate: number;
+  /**
+   * تفصيل درجة الضغط إلى مكوّناتها الخمسة (0-100 لكل مكوّن). الخادم يرسلها
+   * منذ البداية ولم تكن معلَنة هنا، فكانت اللوحة تعرض رقماً بلا تفسير — وهو
+   * أكثر ما يجعل مؤشّراً كهذا غير قابل للتصرّف بناءً عليه.
+   */
+  componentScores?: {
+    ordersPerProvider: number;
+    cancelRate: number;
+    responseTime: number;
+    unassigned: number;
+    growth: number;
+  };
 };
 
 export type OperationalRecommendation = {
