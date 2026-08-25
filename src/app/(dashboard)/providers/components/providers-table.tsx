@@ -22,6 +22,7 @@ import { ar } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TablePagination } from "@/components/ui/table-pagination";
+import { categoryLabel } from "@/domain/entities/service-catalog";
 
 const avatarColors = [
   "from-violet-500/20 to-violet-600/10 text-info border-violet-500/20",
@@ -30,18 +31,6 @@ const avatarColors = [
   "from-orange-500/20 to-orange-600/10 text-warning border-orange-500/20",
   "from-pink-500/20 to-pink-600/10 text-pink-400 border-pink-500/20",
 ];
-
-const categoryLabels: Record<string, string> = {
-  roadside_assistance: "مساعدة طريق",
-  towing: "سطحة / سحب",
-  battery: "بطارية",
-  tire: "إطارات",
-  fuel: "وقود",
-  lockout: "فتح أقفال",
-  maintenance: "صيانة",
-  car_wash: "غسيل",
-  other: "أخرى",
-};
 
 interface ProvidersTableProps {
   providersList: any[];
@@ -233,7 +222,7 @@ export function ProvidersTable({
                       <div className="flex flex-wrap gap-1 max-w-[240px]">
                         {cats.slice(0, 3).map((cat: string) => (
                           <Badge key={cat} variant="outline" className="bg-background/50 text-muted-foreground border-border/40 text-xs px-2 rounded-md font-semibold">
-                            {categoryLabels[cat] || cat}
+                            {categoryLabel(cat) || cat}
                           </Badge>
                         ))}
                         {cats.length > 3 && (

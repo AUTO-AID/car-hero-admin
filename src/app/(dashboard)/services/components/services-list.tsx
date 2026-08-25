@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, Clock, Edit, ReceiptText, Trash2 } from "lucide-react";
 import { Service } from "@/domain/entities/service.types";
+import { categoryMetaFor } from "@/domain/entities/service-catalog";
 import { EmptyState } from "@/components/ui/empty-state";
 
 interface ServicesListProps {
@@ -15,7 +16,6 @@ interface ServicesListProps {
   onEdit: (service: Service) => void;
   onDelete: (id: string) => void;
   onToggleActive: (id: string, isActive: boolean) => void;
-  categoryMeta: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }>;
 }
 
 export function ServicesList({
@@ -24,7 +24,6 @@ export function ServicesList({
   onEdit,
   onDelete,
   onToggleActive,
-  categoryMeta,
 }: ServicesListProps) {
   if (isLoading) {
     return (
@@ -60,7 +59,9 @@ export function ServicesList({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 stagger">
       {services.map((service, i) => {
-        const cat = categoryMeta[service.category] ?? categoryMeta.other;
+        // `categoryMeta.other` لم تعد موجودة (ليست خدمة في الكتالوج)، وكان
+        // التراجع إليها يُنتج `undefined` فيرمي `cat.icon` ويُسقط الشبكة كلها.
+        const cat = categoryMetaFor(service.category);
         const Icon = cat.icon;
         const isEmergency = service.isEmergency ?? false;
         const serviceId = service._id || service.id || "";

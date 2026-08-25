@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { Card } from "@/components/ui/card";
 import { useChartTheme } from "@/application/hooks/use-chart-theme";
+import { categoryLabel } from "@/domain/entities/service-catalog";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
@@ -13,11 +14,10 @@ const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
 interface ServicesStatsProps {
   facets?: any;
-  categoryMeta: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }>;
   isLoading?: boolean;
 }
 
-export function ServicesStats({ facets, categoryMeta, isLoading = false }: ServicesStatsProps) {
+export function ServicesStats({ facets, isLoading = false }: ServicesStatsProps) {
   const chartTheme = useChartTheme();
   const tooltip = chartTheme.tooltip;
   const colors = chartTheme.colors.series;
@@ -38,7 +38,7 @@ export function ServicesStats({ facets, categoryMeta, isLoading = false }: Servi
     grid: { top: 20, right: 10, bottom: 70, left: 10, containLabel: true },
     xAxis: {
       type: "category",
-      data: categories.map((item: any) => categoryMeta[item._id]?.label || item._id),
+      data: categories.map((item: any) => categoryLabel(item._id) || item._id),
       axisLabel: { ...chartTheme.axisLabel, fontSize: 10, rotate: 30 },
     },
     yAxis: { type: "value", axisLabel: { ...chartTheme.axisLabel, fontSize: 10 }, splitLine: chartTheme.splitLine },

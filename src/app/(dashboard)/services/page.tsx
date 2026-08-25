@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, Battery, Car, Download, Fuel, KeyRound, Plus, Search, Settings2, ShieldAlert, SlidersHorizontal, Wrench, Zap } from "lucide-react";
+import { AlertCircle, Download, Plus, Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,22 +12,17 @@ import { FilterSelectValue, Select, SelectContent, SelectItem, SelectTrigger } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createService, deleteService, getAllServices, updateService, type ServiceFilters } from "@/infrastructure/services/services.service";
 import { Service } from "@/domain/entities/service.types";
+import { categoryLabel, categoryMeta } from "@/domain/entities/service-catalog";
 import { ServicesStats } from "./components/services-stats";
 import { ServiceDialog } from "./components/service-dialog";
 import { ServicesList } from "./components/services-list";
 import { useDebouncedValue } from "@/application/hooks/use-debounced-value";
 
-export const categoryMeta: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
-  roadside_assistance: { label: "مساعدة الطريق", color: "text-info", bg: "bg-violet-500/10 border-violet-500/20", icon: ShieldAlert },
-  towing: { label: "سطحة / سحب", color: "text-info", bg: "bg-blue-500/10 border-blue-500/20", icon: Car },
-  battery: { label: "بطارية", color: "text-info", bg: "bg-purple-500/10 border-purple-500/20", icon: Battery },
-  tire: { label: "إطارات", color: "text-danger", bg: "bg-rose-500/10 border-rose-500/20", icon: Wrench },
-  fuel: { label: "وقود", color: "text-warning", bg: "bg-amber-500/10 border-amber-500/20", icon: Fuel },
-  lockout: { label: "فتح أقفال", color: "text-info", bg: "bg-cyan-500/10 border-cyan-500/20", icon: KeyRound },
-  maintenance: { label: "صيانة", color: "text-success", bg: "bg-emerald-500/10 border-emerald-500/20", icon: Settings2 },
-  car_wash: { label: "غسيل", color: "text-info", bg: "bg-sky-500/10 border-sky-500/20", icon: Car },
-  other: { label: "أخرى", color: "text-muted-foreground", bg: "bg-slate-500/10 border-slate-500/20", icon: Zap },
-};
+/**
+ * أُعيد التصدير للحفاظ على مواضع الاستيراد القائمة؛ التعريف نفسه انتقل إلى
+ * `domain/entities/service-catalog` مع بقية اللوحات كي لا تتباعد الجداول.
+ */
+export { categoryMeta };
 
 const activeLabels: Record<string, string> = {
   all: "كل الحالات",
@@ -56,7 +51,7 @@ const sortOrderLabels: Record<string, string> = {
 };
 
 const serviceCategoryLabel = (value: string) =>
-  value === "all" ? "كل التصنيفات" : categoryMeta[value]?.label ?? value;
+  value === "all" ? "كل التصنيفات" : categoryLabel(value) || value;
 
 function unwrapServices(payload: any) {
   const container = payload?.data ?? payload;
@@ -300,13 +295,12 @@ export default function ServicesPage() {
               onEdit={openEdit}
               onDelete={(id) => setDeleteId(id)}
               onToggleActive={(id, isActive) => toggleActiveMut.mutate({ id, isActive })}
-              categoryMeta={categoryMeta}
             />
           )}
         </TabsContent>
 
         <TabsContent value="stats" className="m-0 border-0 p-0 bg-transparent space-y-6 focus-visible:outline-none">
-          <ServicesStats facets={facets} categoryMeta={categoryMeta} isLoading={isLoading} />
+          <ServicesStats facets={facets} isLoading={isLoading} />
         </TabsContent>
       </Tabs>
 
@@ -316,7 +310,7 @@ export default function ServicesPage() {
         editData={editData}
         onSave={handleSave}
         isPending={createMut.isPending || updateMut.isPending}
-        categoryMeta={categoryMeta}
+       
       />
 
       <Dialog open={Boolean(deleteId)} onOpenChange={(open) => !open && setDeleteId(null)}>

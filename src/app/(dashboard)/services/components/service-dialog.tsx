@@ -12,6 +12,7 @@ import { ArrowLeftRight, Calculator, Loader2, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Service } from "@/domain/entities/service.types";
 import { cn } from "@/lib/utils";
+import { categoryLabel, categoryMeta } from "@/domain/entities/service-catalog";
 
 interface ServiceDialogProps {
   open: boolean;
@@ -19,7 +20,6 @@ interface ServiceDialogProps {
   editData: Service | null;
   onSave: (payload: any) => void;
   isPending: boolean;
-  categoryMeta: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }>;
 }
 
 const EMPTY_FORM = {
@@ -42,7 +42,7 @@ const difficultyLabels: Record<string, string> = {
   "1.6": "مرتفعة",
 };
 
-export function ServiceDialog({ open, onClose, editData, onSave, isPending, categoryMeta }: ServiceDialogProps) {
+export function ServiceDialog({ open, onClose, editData, onSave, isPending }: ServiceDialogProps) {
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [showEstimator, setShowEstimator] = useState(false);
   const [calcFuelRate, setCalcFuelRate] = useState(12500);
@@ -128,7 +128,7 @@ export function ServiceDialog({ open, onClose, editData, onSave, isPending, cate
               <Label className="text-xs text-muted-foreground font-bold">التصنيف</Label>
               <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v || "car_wash" })}>
                 <SelectTrigger className="h-9 bg-secondary/40 border-border/40 text-xs">
-                  <SelectDisplayValue value={categoryMeta[form.category]?.label ?? form.category} />
+                  <SelectDisplayValue value={categoryLabel(form.category) || form.category} />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border/40 rounded-xl">
                   {Object.entries(categoryMeta).map(([val, { label }]) => (
