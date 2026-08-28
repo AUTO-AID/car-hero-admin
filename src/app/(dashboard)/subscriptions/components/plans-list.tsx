@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Crown, Edit2, Shield, Star, Trash2, Users, Zap } from "lucide-react";
+import { CheckCircle2, Crown, Edit2, Shield, Sparkles, Star, Trash2, Users, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -21,8 +21,9 @@ export default function PlansList({ plans, isLoading, onEdit, onDeleteClick }: {
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {plans.map((plan) => {
         const tier = plan.tier || "basic"; const Icon = icons[tier] || Shield; const color = colors[tier] || colors.basic;
+        const isBestValue = (plan.price || 0) > 0 && (plan.durationDays || 0) >= 365;
         return <Card key={plan._id} className="p-5 bg-card border-border/40 flex flex-col">
-          <div className="flex items-center justify-between"><div className={`w-10 h-10 rounded-lg bg-secondary/50 flex items-center justify-center ${color}`}><Icon className="w-5 h-5" /></div><Badge variant="outline" className={plan.isActive ? "badge-success" : "badge-neutral"}>{plan.isActive ? "نشطة" : "معطلة"}</Badge></div>
+          <div className="flex items-center justify-between"><div className={`w-10 h-10 rounded-lg bg-secondary/50 flex items-center justify-center ${color}`}><Icon className="w-5 h-5" /></div><div className="flex items-center gap-2">{isBestValue && <Badge variant="outline" className="gap-1 border-amber-500/30 bg-amber-500/10 text-warning font-bold"><Sparkles className="w-3 h-3" />الأوفر</Badge>}<Badge variant="outline" className={plan.isActive ? "badge-success" : "badge-neutral"}>{plan.isActive ? "نشطة" : "معطلة"}</Badge></div></div>
           <h3 className={`text-lg font-bold mt-4 ${color}`}>{plan.nameAr || plan.name}</h3>
           <p className="text-xs text-muted-foreground">{plan.name}</p>
           <p className="mt-3"><span className="text-2xl font-bold text-foreground">{plan.price ? plan.price.toLocaleString("ar-SY") : "مجاني"}</span>{plan.price > 0 && <span className="text-xs text-muted-foreground"> ل.س / {plan.durationDays} يوم</span>}</p>

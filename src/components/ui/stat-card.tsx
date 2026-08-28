@@ -28,6 +28,7 @@ interface StatCardProps {
 
 export function StatCard({
   title, value, subtitle, icon: Icon,
+  iconColor = "text-primary", iconBg = "from-primary/18 to-primary/5",
   glowClass = "", trend, loading, className, valueClassName, critical, sparkline, children,
 }: StatCardProps) {
   if (loading) {
@@ -62,9 +63,9 @@ export function StatCard({
       <div className="flex items-start justify-between mb-4 relative z-10">
         <div className={cn(
           "flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-br shadow-sm border border-primary/10 transition-transform duration-300 group-hover:scale-110",
-          "from-primary/18 to-primary/5"
+          iconBg
         )}>
-          <Icon className="w-5 h-5 text-primary" />
+          <Icon className={cn("w-5 h-5", iconColor)} />
         </div>
 
         {trend ? (
