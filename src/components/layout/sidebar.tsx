@@ -12,7 +12,7 @@ import {
   ChevronDown, Brain
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import type { LucideIcon } from "lucide-react";
 
 type NavItem = {
@@ -81,22 +81,42 @@ interface SidebarProps {
   onCollapse?: (v: boolean) => void;
 }
 
-export function Sidebar({ collapsed = false, onCollapse }: SidebarProps) {
-  const pathname = usePathname();
-  const { admin, logout } = useAuth();
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+type NavContentProps = {
+  isMobile?: boolean;
+  collapsed: boolean;
+  onCollapse?: (v: boolean) => void;
+  pathname: string;
+  admin: ReturnType<typeof useAuth>["admin"];
+  logout: ReturnType<typeof useAuth>["logout"];
+  collapsedGroups: Record<string, boolean>;
+  toggleGroup: (groupName: string) => void;
+};
 
-  useEffect(() => { setMobileOpen(false); }, [pathname]);
-
-  const toggleGroup = (groupName: string) => {
-    setCollapsedGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }));
-  };
-
+/**
+ * Defined at module scope on purpose.
+ *
+ * This used to live inside `Sidebar`, which made it a *new component type* on
+ * every render. `Sidebar` re-renders on every navigation (`usePathname`), so
+ * React could never reconcile the old tree with the new one: it unmounted the
+ * whole sidebar — logo image, all fifteen links, the avatar — and rebuilt it
+ * from scratch each time a page was opened. That teardown is the jank you feel
+ * on every click, and it is invisible in the profiler as "render time" because
+ * the cost is DOM destruction, not React work.
+ */
+const NavContent = memo(function NavContent({
+  isMobile = false,
+  collapsed,
+  onCollapse,
+  pathname,
+  admin,
+  logout,
+  collapsedGroups,
+  toggleGroup,
+}: NavContentProps) {
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 
-  const NavContent = ({ isMobile = false }: { isMobile?: boolean }) => (
+  return (
     <>
       {/* ── Logo ── */}
       <div className={cn(
@@ -195,6 +215,9 @@ export function Sidebar({ collapsed = false, onCollapse }: SidebarProps) {
                     <li key={item.href}>
                       <Link
                         href={item.href}
+                        // Pull the route's code and data before the click, so a
+                        // production navigation is a render rather than a fetch.
+                        prefetch
                         className={cn(
                           "sidebar-item relative flex items-center gap-3 py-2.5 text-sm font-semibold rounded-xl transition-all",
                           collapsed && !isMobile ? "px-2.5 justify-center" : "px-3",
@@ -296,6 +319,23 @@ export function Sidebar({ collapsed = false, onCollapse }: SidebarProps) {
       </div>
     </>
   );
+});
+
+export function Sidebar({ collapsed = false, onCollapse }: SidebarProps) {
+  const pathname = usePathname();
+  const { admin, logout } = useAuth();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
+
+  const toggleGroup = useCallback((groupName: string) => {
+    setCollapsedGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }));
+  }, []);
+
+  // Stable object so `memo` on NavContent actually holds between navigations:
+  // a fresh inline props object would defeat it on every render.
+  const navProps = { collapsed, onCollapse, pathname, admin, logout, collapsedGroups, toggleGroup };
 
   return (
     <>
@@ -330,7 +370,7 @@ export function Sidebar({ collapsed = false, onCollapse }: SidebarProps) {
         >
           <X className="w-4 h-4" />
         </button>
-        <NavContent isMobile />
+        <NavContent isMobile {...navProps} />
       </aside>
 
       {/* Desktop Sidebar */}
@@ -340,7 +380,7 @@ export function Sidebar({ collapsed = false, onCollapse }: SidebarProps) {
       )}>
         {/* Subtle gradient at top */}
         <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-primary/4 to-transparent pointer-events-none" />
-        <NavContent />
+        <NavContent {...navProps} />
       </aside>
     </>
   );
