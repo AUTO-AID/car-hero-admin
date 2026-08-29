@@ -7,7 +7,6 @@ import { Activity, BarChart3, MapPinned, Zap } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Import new Clean Architecture API Services
-import { getPlatformWallet } from "@/infrastructure/services/finance.service";
 import { getAllBookings } from "@/infrastructure/services/bookings.service";
 import {
   getDashboardSummary,
@@ -64,13 +63,6 @@ export default function OverviewPage() {
     retry: 1,
   });
 
-  const { data: wallet } = useQuery({
-    queryKey: queryKeys.finance.platformWallet,
-    queryFn: getPlatformWallet,
-    enabled: !summaryLoading,
-    retry: false,
-  });
-
   const { data: bookingsResponse, isLoading: bookingsLoading } = useQuery({
     queryKey: queryKeys.dashboard.recentBookings,
     queryFn: () => getAllBookings(1, 10),
@@ -91,7 +83,6 @@ export default function OverviewPage() {
     totalUsers: summary?.users?.total ?? 0,
     totalOrders: summary?.orders?.total ?? 0,
     totalRevenue: summary?.revenue?.total ?? 0,
-    platformBalance: wallet?.data?.balance ?? 0,
   };
 
   return (

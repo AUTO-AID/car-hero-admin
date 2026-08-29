@@ -1,6 +1,6 @@
 "use client";
 
-import { Wrench, CheckCircle, Users, Package, Hourglass, XCircle, DollarSign, Wallet } from "lucide-react";
+import { Wrench, CheckCircle, Users, Package, Hourglass, XCircle, DollarSign } from "lucide-react";
 import { StatCard } from "@/components/ui/stat-card";
 
 interface OverviewStatsRowProps {
@@ -12,7 +12,6 @@ interface OverviewStatsRowProps {
     totalUsers: number;
     totalOrders: number;
     totalRevenue: number;
-    platformBalance: number;
   };
   summaryLoading: boolean;
 }
@@ -36,18 +35,6 @@ export function OverviewStatsRow({ kpi, summaryLoading }: OverviewStatsRowProps)
             iconBg="from-emerald-500/20 to-emerald-500/5"
             glowClass="glow-green"
             sparkline={[12, 14, 11, 16, 20, 24, 28, 25, 32]}
-            loading={summaryLoading}
-          />
-          <StatCard
-            className="border-s-4 border-s-cyan-500 bg-gradient-to-l from-cyan-500/10 to-transparent"
-            valueClassName="text-4xl text-foreground"
-            title="رصيد المنصة"
-            value={`${kpi.platformBalance.toLocaleString("ar-SA")} ل.س`}
-            icon={Wallet}
-            iconColor="text-info"
-            iconBg="from-cyan-500/20 to-cyan-500/5"
-            glowClass="glow-cyan"
-            sparkline={[5, 8, 12, 10, 15, 18, 22, 20, 24]}
             loading={summaryLoading}
           />
         </div>
